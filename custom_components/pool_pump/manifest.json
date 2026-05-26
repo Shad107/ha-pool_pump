@@ -1,17 +1,13 @@
 {
   "domain": "pool_pump",
   "name": "Pool Pump Manager",
-  "version": "0.0.2",
-  "documentation": "https://github.com/oncleben31/ha-pool_pump",
-  "issue_tracker": "https://github.com/oncleben31/ha-pool_pump/issues",
-  "dependencies": [],
-  "config_flow": false,
-  "codeowners": [
-    "@oncleben31",
-    "@exxamalte"
-  ],
-  "requirements": [
-    "pypool_pump==0.0.1"
-  ],
-  "iot_class": "calculated"
+  "version": "0.1.0",
+  "documentation": "https://github.com/Shad107/ha-pool_pump",
+  "issue_tracker": "https://github.com/Shad107/ha-pool_pump/issues",
+  "codeowners": ["@Shad107"],
+  "config_flow": true,
+  "dependencies": ["sun"],
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "requirements": []
 }

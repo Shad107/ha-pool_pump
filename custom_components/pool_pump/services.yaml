@@ -1,4 +1,4 @@
-# Describes the format for available Pool Pump services
-
-check:
-  description: Check if the pool pump should be running now.
+# Pool Pump Manager services
+refresh:
+  name: Refresh
+  description: Recompute the schedule and reapply the pump/electrolyzer state immediately.

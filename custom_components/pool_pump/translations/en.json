@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pool Pump Manager",
+        "description": "Pick the pump switch and the temperature source. Water temperature gives best results; a daily-mean air temperature is an acceptable fallback.",
+        "data": {
+          "pump_switch": "Pool pump switch",
+          "temperature_sensor": "Temperature sensor (water or daily-mean air)"
+        }
+      },
+      "options": {
+        "title": "Scheduling and electrolyzer",
+        "description": "Duration is computed as temperature / 2 (or /3 below 13 °C), clamped between min and max hours, centered on the pivot hour. A forecast sensor above the heatwave threshold forces max hours.",
+        "data": {
+          "min_hours": "Minimum run duration (hours)",
+          "max_hours": "Maximum run duration (hours)",
+          "break_hours": "Midday break duration (hours; 0 = no split)",
+          "pivot_hour": "Pivot hour (run centered around this hour, local time)",
+          "forecast_sensor": "Forecast max temperature sensor (optional)",
+          "heatwave_threshold": "Heatwave threshold (°C) — at or above, run max hours",
+          "electrolyzer_switch": "Electrolyzer switch (optional)",
+          "electrolyzer_post_start_delay": "Electrolyzer ON delay after pump start (s)",
+          "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
+          "water_level_critical": "Low-water binary sensor (optional; pump stays off when on)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This pool pump is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pool Pump Manager — options",
+        "data": {
+          "min_hours": "Minimum run duration (hours)",
+          "max_hours": "Maximum run duration (hours)",
+          "break_hours": "Midday break duration (hours; 0 = no split)",
+          "pivot_hour": "Pivot hour (run centered around this hour, local time)",
+          "forecast_sensor": "Forecast max temperature sensor (optional)",
+          "heatwave_threshold": "Heatwave threshold (°C)",
+          "electrolyzer_switch": "Electrolyzer switch (optional)",
+          "electrolyzer_post_start_delay": "Electrolyzer ON delay after pump start (s)",
+          "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
+          "water_level_critical": "Low-water binary sensor (optional)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Auto",
+          "on": "On",
+          "off": "Off"
+        }
+      }
+    },
+    "sensor": {
+      "start_time": {"name": "Pump start time"},
+      "end_time": {"name": "Pump end time"},
+      "duration": {"name": "Pump daily duration"},
+      "temperature_used": {"name": "Temperature used"},
+      "status": {"name": "Status"}
+    },
+    "binary_sensor": {
+      "pump_target": {"name": "Pump should be on"},
+      "electrolyzer_target": {"name": "Electrolyzer should be on"},
+      "heatwave": {"name": "Heatwave override"}
+    }
+  }
+}

@@ -1,43 +1,51 @@
-"""Constants for blueprint."""
-# Base component constants
-NAME = "Pool Pump Manager"
+"""Constants for Pool Pump Manager."""
+from __future__ import annotations
+
+from datetime import timedelta
+
 DOMAIN = "pool_pump"
-DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "0.0.2beta1"
+NAME = "Pool Pump Manager"
+VERSION = "0.1.0"
 
-ISSUE_URL = "https://github.com/oncleben31/ha-pool_pump/issues"
-DOC_URL = "https://github.com/oncleben31/ha-pool_pump"
+ISSUE_URL = "https://github.com/Shad107/ha-pool_pump/issues"
 
-# Icons
-ICON = "mdi:format-quote-close"
+CONF_PUMP_SWITCH = "pump_switch"
+CONF_TEMPERATURE_SENSOR = "temperature_sensor"
+CONF_TEMPERATURE_KIND = "temperature_kind"
+CONF_MIN_HOURS = "min_hours"
+CONF_MAX_HOURS = "max_hours"
+CONF_BREAK_HOURS = "break_hours"
+CONF_PIVOT_HOUR = "pivot_hour"
+CONF_FORECAST_SENSOR = "forecast_sensor"
+CONF_HEATWAVE_THRESHOLD = "heatwave_threshold"
+CONF_ELECTROLYZER_SWITCH = "electrolyzer_switch"
+CONF_ELECTROLYZER_POST_START_DELAY = "electrolyzer_post_start_delay"
+CONF_ELECTROLYZER_PRE_STOP_DELAY = "electrolyzer_pre_stop_delay"
+CONF_WATER_LEVEL_CRITICAL = "water_level_critical"
 
-# Common constants
-POOL_PUMP_MODE_AUTO = "Auto"
-ATTR_POOL_PUMP_MODE_ENTITY_ID = "pool_pump_mode_entity_id"
-ATTR_WATER_LEVEL_CRITICAL_ENTITY_ID = "water_level_critical_entity_id"
+TEMP_KIND_WATER = "water"
+TEMP_KIND_AIR = "air"
 
-ATTR_SWITCH_ENTITY_ID = "switch_entity_id"
+DEFAULT_MIN_HOURS = 2.0
+DEFAULT_MAX_HOURS = 24.0
+DEFAULT_BREAK_HOURS = 0.0
+DEFAULT_PIVOT_HOUR = 14
+DEFAULT_HEATWAVE_THRESHOLD = 28.0
+DEFAULT_ELECTROLYZER_POST_START_DELAY = 120
+DEFAULT_ELECTROLYZER_PRE_STOP_DELAY = 60
 
-# Constants for @oncleben31 mode
-ATTR_POOL_TEMPERATURE_ENTITY_ID = "pool_temperature_entity_id"
-ATTR_TOTAL_DAILY_FILTERING_DURATION = "total_daily_filtering_duration"
-ATTR_NEXT_RUN_SCHEDULE = "next_run_schedule"
-ATTR_SCHEDULE_BREAK_DURATION_IN_HOURS = "schedule_break_in_hours"
-DEFAULT_BREAK_DURATION_IN_HOURS = 0.0
+COLD_THRESHOLD_CELSIUS = 13.0
 
-# Constants for @exxamalte mode
-# Removed
+UPDATE_INTERVAL = timedelta(minutes=1)
 
-# Defaults
-DEFAULT_NAME = DOMAIN
+MODE_AUTO = "auto"
+MODE_ON = "on"
+MODE_OFF = "off"
+MODE_OPTIONS = [MODE_AUTO, MODE_ON, MODE_OFF]
 
-
-STARTUP_MESSAGE = f"""
--------------------------------------------------------------------
-{NAME}
-Version: {VERSION}
-This is a custom integration!
-If you have any issues with this you need to open an issue here:
-{ISSUE_URL}
--------------------------------------------------------------------
-"""
+RUN_REASON_OFF = "off"
+RUN_REASON_AUTO = "auto"
+RUN_REASON_MANUAL_ON = "manual_on"
+RUN_REASON_MANUAL_OFF = "manual_off"
+RUN_REASON_WATER_LOW = "water_low"
+RUN_REASON_HEATWAVE = "heatwave"

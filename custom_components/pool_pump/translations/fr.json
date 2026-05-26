@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pool Pump Manager",
+        "description": "Sélectionne le switch de la pompe et la source de température. Une sonde d'eau donne les meilleurs résultats ; à défaut, la moyenne journalière de température de l'air est acceptable.",
+        "data": {
+          "pump_switch": "Switch de la pompe de piscine",
+          "temperature_sensor": "Capteur de température (eau ou moyenne journalière de l'air)"
+        }
+      },
+      "options": {
+        "title": "Horaire et électrolyseur",
+        "description": "La durée est T / 2 (ou T / 3 sous 13 °C), bornée entre min et max heures, centrée sur l'heure pivot. Si un capteur de forecast est renseigné et qu'il atteint le seuil canicule, la durée passe à max heures.",
+        "data": {
+          "min_hours": "Durée minimale (heures)",
+          "max_hours": "Durée maximale (heures)",
+          "break_hours": "Pause de mi-journée (heures ; 0 = pas de coupure)",
+          "pivot_hour": "Heure pivot (centrage du run, heure locale)",
+          "forecast_sensor": "Capteur de forecast (max prévu, optionnel)",
+          "heatwave_threshold": "Seuil canicule (°C) — au-delà, on force la durée max",
+          "electrolyzer_switch": "Switch de l'électrolyseur (optionnel)",
+          "electrolyzer_post_start_delay": "Délai ON électrolyseur après démarrage pompe (s)",
+          "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
+          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel ; bloque la pompe si ON)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Cette pompe de piscine est déjà configurée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pool Pump Manager — options",
+        "data": {
+          "min_hours": "Durée minimale (heures)",
+          "max_hours": "Durée maximale (heures)",
+          "break_hours": "Pause de mi-journée (heures ; 0 = pas de coupure)",
+          "pivot_hour": "Heure pivot (heure locale)",
+          "forecast_sensor": "Capteur de forecast (max prévu, optionnel)",
+          "heatwave_threshold": "Seuil canicule (°C)",
+          "electrolyzer_switch": "Switch de l'électrolyseur (optionnel)",
+          "electrolyzer_post_start_delay": "Délai ON électrolyseur après démarrage pompe (s)",
+          "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
+          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Auto",
+          "on": "Marche forcée",
+          "off": "Arrêt forcé"
+        }
+      }
+    },
+    "sensor": {
+      "start_time": {"name": "Heure de début"},
+      "end_time": {"name": "Heure de fin"},
+      "duration": {"name": "Durée journalière"},
+      "temperature_used": {"name": "Température utilisée"},
+      "status": {"name": "Statut"}
+    },
+    "binary_sensor": {
+      "pump_target": {"name": "Pompe doit tourner"},
+      "electrolyzer_target": {"name": "Électrolyseur doit tourner"},
+      "heatwave": {"name": "Mode canicule"}
+    }
+  }
+}
