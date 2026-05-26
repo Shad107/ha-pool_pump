@@ -97,7 +97,8 @@
         "state": {
           "auto": "Auto",
           "on": "On",
-          "off": "Off"
+          "off": "Off",
+          "pump_only": "Pump only (cell off)"
         }
       }
     },
@@ -142,11 +143,6 @@
       },
       "heatwave": {
         "name": "Heatwave override"
-      }
-    },
-    "switch": {
-      "electrolyzer_enabled": {
-        "name": "Electrolyzer enabled"
       }
     }
   }

@@ -78,7 +78,8 @@ STORAGE_KEY_TEMPLATE = "pool_pump.{entry_id}.water_model"
 MODE_AUTO = "auto"
 MODE_ON = "on"
 MODE_OFF = "off"
-MODE_OPTIONS = [MODE_AUTO, MODE_ON, MODE_OFF]
+MODE_PUMP_ONLY = "pump_only"
+MODE_OPTIONS = [MODE_AUTO, MODE_ON, MODE_PUMP_ONLY, MODE_OFF]
 
 RUN_REASON_OFF = "off"
 RUN_REASON_AUTO = "auto"
@@ -98,4 +99,4 @@ ELEC_BLOCK_TEMP_HIGH = "temp_high"
 ELEC_BLOCK_MANUAL = "manual"
 ELEC_BLOCK_BACKWASH = "backwash"
 ELEC_BLOCK_WINTERIZATION = "winterization"
-ELEC_BLOCK_USER_DISABLED = "user_disabled"
+ELEC_BLOCK_PUMP_ONLY = "pump_only"

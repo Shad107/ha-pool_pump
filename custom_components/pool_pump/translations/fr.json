@@ -97,7 +97,8 @@
         "state": {
           "auto": "Auto",
           "on": "Marche forcée",
-          "off": "Arrêt forcé"
+          "off": "Arrêt forcé",
+          "pump_only": "Pompe seule (cellule off)"
         }
       }
     },
@@ -142,11 +143,6 @@
       },
       "heatwave": {
         "name": "Mode canicule"
-      }
-    },
-    "switch": {
-      "electrolyzer_enabled": {
-        "name": "Électrolyseur activé"
       }
     }
   }

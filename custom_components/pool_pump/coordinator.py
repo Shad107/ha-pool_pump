@@ -81,11 +81,12 @@ from .const import (
     ELEC_BLOCK_PUMP_UNAVAILABLE,
     ELEC_BLOCK_TEMP_HIGH,
     ELEC_BLOCK_TEMP_LOW,
-    ELEC_BLOCK_USER_DISABLED,
+    ELEC_BLOCK_PUMP_ONLY,
     ELEC_BLOCK_WINTERIZATION,
     MODE_AUTO,
     MODE_OFF,
     MODE_ON,
+    MODE_PUMP_ONLY,
     RUN_REASON_AUTO,
     RUN_REASON_BACKWASH,
     RUN_REASON_HEATWAVE,
@@ -326,11 +327,6 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._pump_last_off: datetime | None = None
         # Backwash mode: when active, pump ON + cell OFF until ends_at.
         self._backwash_ends_at: datetime | None = None
-        # User-controlled electrolyzer enable flag (independent of pump
-        # mode). Off ⇒ cell blocked even if pump is running. Use case:
-        # chlorine shock treatment — pump runs to mix the shock dose,
-        # cell stays off to avoid over-chlorination.
-        self._electrolyzer_enabled: bool = True
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -376,9 +372,6 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._backwash_ends_at = datetime.fromisoformat(bw)
             except ValueError:
                 self._backwash_ends_at = None
-        # User-controlled cell enable
-        if "electrolyzer_enabled" in stored:
-            self._electrolyzer_enabled = bool(stored.get("electrolyzer_enabled"))
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -412,18 +405,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     if self._backwash_ends_at
                     else None
                 ),
-                "electrolyzer_enabled": self._electrolyzer_enabled,
             }
         )
-
-    def set_electrolyzer_enabled(self, enabled: bool) -> None:
-        """User-toggle for the electrolyzer, independent of pump mode."""
-        self._electrolyzer_enabled = bool(enabled)
-        self.hass.async_create_task(self.async_request_refresh())
-
-    @property
-    def electrolyzer_enabled(self) -> bool:
-        return self._electrolyzer_enabled
 
     def set_mode(self, mode: str) -> None:
         """Change manual mode and force a refresh."""
@@ -781,14 +764,14 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         """
         if not self.options.get(CONF_ELECTROLYZER_SWITCH):
             return False, ELEC_BLOCK_NONE
-        if not self._electrolyzer_enabled:
-            return False, ELEC_BLOCK_USER_DISABLED
         if data.backwash_active:
             return False, ELEC_BLOCK_BACKWASH
         if data.winterization_active:
             return False, ELEC_BLOCK_WINTERIZATION
         if self.mode == MODE_OFF:
             return False, ELEC_BLOCK_MANUAL
+        if self.mode == MODE_PUMP_ONLY:
+            return False, ELEC_BLOCK_PUMP_ONLY
 
         pump_id: str = self.options[CONF_PUMP_SWITCH]
         pump_state = self.hass.states.get(pump_id)
