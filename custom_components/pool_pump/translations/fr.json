@@ -35,7 +35,11 @@
           "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
           "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
           "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
-          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)"
+          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)",
+          "winterization_start_month": "Mois début hivernage (1-12, 0=désactivé ; ex 11 = nov)",
+          "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
+          "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
+          "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)"
         }
       }
     },
@@ -69,7 +73,11 @@
           "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
           "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
           "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
-          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)"
+          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)",
+          "winterization_start_month": "Mois début hivernage (1-12, 0=désactivé ; ex 11 = nov)",
+          "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
+          "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
+          "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)"
         }
       }
     }
@@ -120,6 +128,9 @@
       },
       "energy_total": {
         "name": "Énergie totale"
+      },
+      "cell_hours": {
+        "name": "Heures cellule"
       }
     },
     "binary_sensor": {

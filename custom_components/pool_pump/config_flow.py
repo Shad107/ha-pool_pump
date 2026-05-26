@@ -30,10 +30,12 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_BACKWASH_DURATION_MINUTES,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
     CONF_PUMP_POWER_SENSOR,
+    CONF_PUMP_SHORT_CYCLE_THRESHOLD,
     CONF_PUMP_SWITCH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
@@ -44,6 +46,9 @@ from .const import (
     CONF_TEMPERATURE_OFFSET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WATER_LEVEL_CRITICAL,
+    CONF_WINTERIZATION_END_MONTH,
+    CONF_WINTERIZATION_START_MONTH,
+    DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_BREAK_HOURS,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
@@ -53,6 +58,7 @@ from .const import (
     DEFAULT_MAX_HOURS,
     DEFAULT_MIN_HOURS,
     DEFAULT_PIVOT_HOUR,
+    DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD,
     DEFAULT_SMOOTHING_WINDOW_HOURS,
     DEFAULT_SOLAR_COEFFICIENT,
     DEFAULT_TAU_HOURS,
@@ -284,6 +290,34 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 },
             ): EntitySelector(
                 EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
+            vol.Optional(
+                CONF_WINTERIZATION_START_MONTH,
+                default=current.get(CONF_WINTERIZATION_START_MONTH, 0),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=12, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_WINTERIZATION_END_MONTH,
+                default=current.get(CONF_WINTERIZATION_END_MONTH, 0),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=12, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_BACKWASH_DURATION_MINUTES,
+                default=current.get(
+                    CONF_BACKWASH_DURATION_MINUTES, DEFAULT_BACKWASH_DURATION_MINUTES
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=1, max=60, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_PUMP_SHORT_CYCLE_THRESHOLD,
+                default=current.get(
+                    CONF_PUMP_SHORT_CYCLE_THRESHOLD, DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=300, step=5, mode=NumberSelectorMode.BOX)
             ),
         }
     )

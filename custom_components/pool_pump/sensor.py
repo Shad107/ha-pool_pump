@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     CONF_ELECTROLYZER_POWER_SENSOR,
+    CONF_ELECTROLYZER_SWITCH,
     CONF_PUMP_POWER_SENSOR,
     DOMAIN,
 )
@@ -42,6 +43,8 @@ async def async_setup_entry(
             EnergyTodaySensor(coordinator, entry),
             EnergyTotalSensor(coordinator, entry),
         ])
+    if opts.get(CONF_ELECTROLYZER_SWITCH):
+        entities.append(CellHoursSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -247,3 +250,20 @@ class EnergyTotalSensor(PoolPumpEntity, SensorEntity):
     def native_value(self):
         d = self.coordinator.data
         return round(d.energy_total_kwh, 2) if d else None
+
+
+class CellHoursSensor(PoolPumpEntity, SensorEntity):
+    _attr_translation_key = "cell_hours"
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:counter"
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_cell_hours"
+
+    @property
+    def native_value(self):
+        d = self.coordinator.data
+        return round(d.cell_hours_total, 2) if d else None

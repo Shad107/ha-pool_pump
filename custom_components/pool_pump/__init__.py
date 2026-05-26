@@ -75,6 +75,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 await c.async_request_refresh()
 
         hass.services.async_register(DOMAIN, "refresh", _refresh)
+
+    if not hass.services.has_service(DOMAIN, "backwash"):
+        async def _backwash(call):
+            duration = call.data.get("duration_minutes")
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.trigger_backwash(duration)
+
+        hass.services.async_register(DOMAIN, "backwash", _backwash)
+
+    if not hass.services.has_service(DOMAIN, "cancel_backwash"):
+        async def _cancel(_call):
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.cancel_backwash()
+
+        hass.services.async_register(DOMAIN, "cancel_backwash", _cancel)
     return True
 
 

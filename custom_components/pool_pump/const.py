@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -40,6 +40,13 @@ CONF_SOLAR_PEAK_SENSOR = "solar_peak_sensor"
 CONF_SOLAR_COEFFICIENT = "solar_coefficient"
 CONF_PUMP_POWER_SENSOR = "pump_power_sensor"
 CONF_ELECTROLYZER_POWER_SENSOR = "electrolyzer_power_sensor"
+CONF_WINTERIZATION_START_MONTH = "winterization_start_month"
+CONF_WINTERIZATION_END_MONTH = "winterization_end_month"
+CONF_BACKWASH_DURATION_MINUTES = "backwash_duration_minutes"
+CONF_PUMP_SHORT_CYCLE_THRESHOLD = "pump_short_cycle_threshold"
+
+DEFAULT_BACKWASH_DURATION_MINUTES = 5
+DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD = 30  # seconds; brief pump off ignored
 
 DEFAULT_SMOOTHING_WINDOW_HOURS = 24.0
 DEFAULT_SOLAR_COEFFICIENT = 0.6  # °C / hour at full sun (P_solar = P_peak)
@@ -79,6 +86,8 @@ RUN_REASON_MANUAL_ON = "manual_on"
 RUN_REASON_MANUAL_OFF = "manual_off"
 RUN_REASON_WATER_LOW = "water_low"
 RUN_REASON_HEATWAVE = "heatwave"
+RUN_REASON_BACKWASH = "backwash"
+RUN_REASON_WINTERIZATION = "winterization"
 
 ELEC_BLOCK_NONE = "none"
 ELEC_BLOCK_PUMP_OFF = "pump_off"
@@ -87,3 +96,5 @@ ELEC_BLOCK_MARGIN = "margin"
 ELEC_BLOCK_TEMP_LOW = "temp_low"
 ELEC_BLOCK_TEMP_HIGH = "temp_high"
 ELEC_BLOCK_MANUAL = "manual"
+ELEC_BLOCK_BACKWASH = "backwash"
+ELEC_BLOCK_WINTERIZATION = "winterization"

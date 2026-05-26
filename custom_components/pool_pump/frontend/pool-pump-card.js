@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.7.0";
+const CARD_VERSION = "0.8.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -181,10 +181,11 @@ class PoolPumpCard extends HTMLElement {
         </div>
 
         <div class="actions">
-          ${actionBtn("mdi:play",       "Marche", () => this._setMode("on"),    modeState === "on")}
-          ${actionBtn("mdi:autorenew",  "Auto",   () => this._setMode("auto"),  modeState === "auto")}
-          ${actionBtn("mdi:stop",       "Arrêt",  () => this._setMode("off"),   modeState === "off")}
-          ${actionBtn("mdi:refresh",    "Refresh",() => this._refresh(),        false)}
+          ${actionBtn("mdi:play",       "Marche",  () => this._setMode("on"),   modeState === "on")}
+          ${actionBtn("mdi:autorenew",  "Auto",    () => this._setMode("auto"), modeState === "auto")}
+          ${actionBtn("mdi:stop",       "Arrêt",   () => this._setMode("off"),  modeState === "off")}
+          ${actionBtn("mdi:filter",     "Backwash",() => this._backwash(),       false)}
+          ${actionBtn("mdi:refresh",    "Refresh", () => this._refresh(),        false)}
         </div>
       </div>
     `;
@@ -194,7 +195,8 @@ class PoolPumpCard extends HTMLElement {
     btns[0].onclick = () => this._setMode("on");
     btns[1].onclick = () => this._setMode("auto");
     btns[2].onclick = () => this._setMode("off");
-    btns[3].onclick = () => this._refresh();
+    btns[3].onclick = () => this._backwash();
+    btns[4].onclick = () => this._refresh();
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -243,6 +245,13 @@ class PoolPumpCard extends HTMLElement {
   _refresh() {
     if (!this._hass) return;
     this._hass.callService("pool_pump", "refresh", {});
+  }
+
+  _backwash() {
+    if (!this._hass) return;
+    if (confirm("Lancer un backwash filtre ? (pompe ON + cellule OFF pendant la durée configurée)")) {
+      this._hass.callService("pool_pump", "backwash", {});
+    }
   }
 
   getCardSize() {

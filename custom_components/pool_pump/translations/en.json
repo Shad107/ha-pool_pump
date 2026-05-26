@@ -35,7 +35,11 @@
           "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
           "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
           "pump_power_sensor": "Pump power sensor (W, optional)",
-          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)"
+          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)",
+          "winterization_start_month": "Winterization start month (1-12, 0=disabled; e.g. 11 = Nov)",
+          "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
+          "backwash_duration_minutes": "Default backwash duration (minutes)",
+          "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)"
         }
       }
     },
@@ -69,7 +73,11 @@
           "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
           "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
           "pump_power_sensor": "Pump power sensor (W, optional)",
-          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)"
+          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)",
+          "winterization_start_month": "Winterization start month (1-12, 0=disabled; e.g. 11 = Nov)",
+          "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
+          "backwash_duration_minutes": "Default backwash duration (minutes)",
+          "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)"
         }
       }
     }
@@ -120,6 +128,9 @@
       },
       "energy_total": {
         "name": "Energy total"
+      },
+      "cell_hours": {
+        "name": "Cell hours"
       }
     },
     "binary_sensor": {

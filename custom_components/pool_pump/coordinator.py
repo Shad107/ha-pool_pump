@@ -45,11 +45,15 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_BACKWASH_DURATION_MINUTES,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
     CONF_PUMP_POWER_SENSOR,
+    CONF_PUMP_SHORT_CYCLE_THRESHOLD,
     CONF_PUMP_SWITCH,
+    CONF_WINTERIZATION_END_MONTH,
+    CONF_WINTERIZATION_START_MONTH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
     CONF_SOLAR_PEAK_SENSOR,
@@ -59,14 +63,17 @@ from .const import (
     CONF_TEMPERATURE_OFFSET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WATER_LEVEL_CRITICAL,
+    DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
+    DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD,
     DEFAULT_SMOOTHING_WINDOW_HOURS,
     DEFAULT_SOLAR_COEFFICIENT,
     DEFAULT_TAU_HOURS,
     DEFAULT_TEMPERATURE_MODE,
     DEFAULT_TEMPERATURE_OFFSET,
     DOMAIN,
+    ELEC_BLOCK_BACKWASH,
     ELEC_BLOCK_MANUAL,
     ELEC_BLOCK_MARGIN,
     ELEC_BLOCK_NONE,
@@ -74,15 +81,18 @@ from .const import (
     ELEC_BLOCK_PUMP_UNAVAILABLE,
     ELEC_BLOCK_TEMP_HIGH,
     ELEC_BLOCK_TEMP_LOW,
+    ELEC_BLOCK_WINTERIZATION,
     MODE_AUTO,
     MODE_OFF,
     MODE_ON,
     RUN_REASON_AUTO,
+    RUN_REASON_BACKWASH,
     RUN_REASON_HEATWAVE,
     RUN_REASON_MANUAL_OFF,
     RUN_REASON_MANUAL_ON,
     RUN_REASON_OFF,
     RUN_REASON_WATER_LOW,
+    RUN_REASON_WINTERIZATION,
     STORAGE_KEY_TEMPLATE,
     STORAGE_VERSION,
     TEMP_MODE_AIR_MODEL,
@@ -143,6 +153,10 @@ class PoolPumpData:
     total_power_w: float | None = None
     energy_today_kwh: float = 0.0
     energy_total_kwh: float = 0.0
+    cell_hours_total: float = 0.0
+    backwash_active: bool = False
+    backwash_ends_at: datetime | None = None
+    winterization_active: bool = False
 
 
 def compute_duration(
@@ -304,6 +318,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._energy_total_kwh: float = 0.0
         self._last_energy_update: datetime | None = None
         self._energy_today_date: str | None = None  # YYYY-MM-DD for daily reset
+        # Cell lifetime accounting and pump short-cycle debounce
+        self._cell_hours_total: float = 0.0
+        self._last_cell_update: datetime | None = None
+        self._pump_continuous_on_since: datetime | None = None
+        self._pump_last_off: datetime | None = None
+        # Backwash mode: when active, pump ON + cell OFF until ends_at.
+        self._backwash_ends_at: datetime | None = None
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -334,6 +355,21 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._last_energy_update = datetime.fromisoformat(last_energy)
             except ValueError:
                 self._last_energy_update = None
+        # Cell-hour accumulator
+        self._cell_hours_total = float(stored.get("cell_hours_total") or 0.0)
+        last_cell = stored.get("last_cell_update")
+        if last_cell:
+            try:
+                self._last_cell_update = datetime.fromisoformat(last_cell)
+            except ValueError:
+                self._last_cell_update = None
+        # Backwash timer
+        bw = stored.get("backwash_ends_at")
+        if bw:
+            try:
+                self._backwash_ends_at = datetime.fromisoformat(bw)
+            except ValueError:
+                self._backwash_ends_at = None
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -356,6 +392,17 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     if self._last_energy_update
                     else None
                 ),
+                "cell_hours_total": self._cell_hours_total,
+                "last_cell_update": (
+                    self._last_cell_update.isoformat()
+                    if self._last_cell_update
+                    else None
+                ),
+                "backwash_ends_at": (
+                    self._backwash_ends_at.isoformat()
+                    if self._backwash_ends_at
+                    else None
+                ),
             }
         )
 
@@ -363,6 +410,41 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         """Change manual mode and force a refresh."""
         self.mode = mode
         self.hass.async_create_task(self.async_request_refresh())
+
+    def trigger_backwash(self, duration_minutes: float | None = None) -> None:
+        """Start a backwash cycle: pump ON + cell OFF for `duration_minutes`."""
+        dur = float(
+            duration_minutes
+            if duration_minutes is not None
+            else self.options.get(
+                CONF_BACKWASH_DURATION_MINUTES, DEFAULT_BACKWASH_DURATION_MINUTES
+            )
+        )
+        self._backwash_ends_at = dt_util.now() + timedelta(minutes=dur)
+        _LOGGER.info("Backwash started: %.1f min (ends at %s)", dur, self._backwash_ends_at)
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def cancel_backwash(self) -> None:
+        """Cancel an in-progress backwash."""
+        self._backwash_ends_at = None
+        self.hass.async_create_task(self.async_request_refresh())
+
+    @staticmethod
+    def _is_winter_month(now: datetime, start: int, end: int) -> bool:
+        """True if `now`'s month is within the winterization range.
+
+        Handles year-wrap (e.g., start=11, end=3 means Nov, Dec, Jan, Feb, Mar).
+        Setting both to 0 (or equal) means winterization disabled.
+        """
+        if not (1 <= start <= 12 and 1 <= end <= 12):
+            return False
+        if start == end:
+            return False
+        m = now.month
+        if start <= end:
+            return start <= m <= end
+        # wraps year boundary
+        return m >= start or m <= end
 
     async def _async_update_data(self) -> PoolPumpData:
         now = dt_util.now()
@@ -512,6 +594,47 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 elec_id, data.electrolyzer_available, "electrolyzer"
             )
 
+        # Backwash timer
+        if self._backwash_ends_at is not None and now >= self._backwash_ends_at:
+            _LOGGER.info("Backwash cycle ended")
+            self._backwash_ends_at = None
+        data.backwash_active = self._backwash_ends_at is not None
+        data.backwash_ends_at = self._backwash_ends_at
+
+        # Winterization (month-range check)
+        win_start = int(self.options.get(CONF_WINTERIZATION_START_MONTH, 0) or 0)
+        win_end = int(self.options.get(CONF_WINTERIZATION_END_MONTH, 0) or 0)
+        data.winterization_active = self._is_winter_month(now, win_start, win_end)
+
+        # Pump short-cycle debounce: update _pump_continuous_on_since
+        short_cycle = int(
+            self.options.get(
+                CONF_PUMP_SHORT_CYCLE_THRESHOLD, DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD
+            )
+        )
+        pump_phys_state = self.hass.states.get(pump_id)
+        pump_is_on = (
+            pump_phys_state is not None and pump_phys_state.state == STATE_ON
+        )
+        if pump_is_on:
+            if self._pump_continuous_on_since is None:
+                # Coming back from OFF — check if it was a short cycle
+                if (
+                    self._pump_last_off is not None
+                    and (now - self._pump_last_off).total_seconds() < short_cycle
+                ):
+                    # Brief glitch: keep the prior continuous_on_since if any.
+                    # We restore from the same instant minus a tiny offset so
+                    # the elapsed time is preserved.
+                    self._pump_continuous_on_since = self._pump_last_off
+                else:
+                    self._pump_continuous_on_since = now
+        else:
+            if self._pump_continuous_on_since is not None:
+                # Pump just went off
+                self._pump_last_off = now
+                self._pump_continuous_on_since = None
+
         pump_target, reason = self._decide_pump(now, data, water_low_id)
         elec_target, elec_block = self._decide_electrolyzer(
             now,
@@ -520,6 +643,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             pre_stop=pre_stop,
             elec_min=elec_min,
             elec_max=elec_max,
+            short_cycle_threshold=short_cycle,
         )
 
         data.pump_should_be_on = pump_target
@@ -567,6 +691,17 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.energy_today_kwh = self._energy_today_kwh
         data.energy_total_kwh = self._energy_total_kwh
 
+        # Cell-hour accumulator: integrate when cell physically ON
+        if elec_id:
+            cell_state = self.hass.states.get(elec_id)
+            cell_on = cell_state is not None and cell_state.state == STATE_ON
+            if cell_on and self._last_cell_update is not None:
+                dt_h = (now - self._last_cell_update).total_seconds() / 3600
+                if 0 < dt_h < 0.5:
+                    self._cell_hours_total += dt_h
+            self._last_cell_update = now
+        data.cell_hours_total = self._cell_hours_total
+
         return data
 
     @staticmethod
@@ -580,6 +715,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     def _decide_pump(
         self, now: datetime, data: PoolPumpData, water_low_id: str | None
     ) -> tuple[bool, str]:
+        # Backwash takes precedence over everything — pump must run.
+        if data.backwash_active:
+            return True, RUN_REASON_BACKWASH
+        # Winterization is the next-highest priority — everything off.
+        if data.winterization_active:
+            return False, RUN_REASON_WINTERIZATION
+
         if self.mode == MODE_ON:
             return True, RUN_REASON_MANUAL_ON
         if self.mode == MODE_OFF:
@@ -607,16 +749,23 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         pre_stop: int,
         elec_min: float,
         elec_max: float,
+        short_cycle_threshold: int,
     ) -> tuple[bool, str]:
         """Decide on the actual physical pump state, never on the intended one.
 
-        This is the safety invariant: the cell must NEVER be energized
-        unless we can confirm water is circulating. If the pump entity is
-        unavailable, treat as a hard block — dry-firing destroys the cell
-        in seconds.
+        Safety invariant: the cell must NEVER be energized unless we can
+        confirm water is circulating. Drives:
+        - backwash mode → cell forced OFF (only pump runs to flush filter)
+        - winterization → everything off
+        - debounce: a brief pump-off (< short_cycle_threshold s) does NOT
+          reset the post-start timer
         """
         if not self.options.get(CONF_ELECTROLYZER_SWITCH):
             return False, ELEC_BLOCK_NONE
+        if data.backwash_active:
+            return False, ELEC_BLOCK_BACKWASH
+        if data.winterization_active:
+            return False, ELEC_BLOCK_WINTERIZATION
         if self.mode == MODE_OFF:
             return False, ELEC_BLOCK_MANUAL
 
@@ -637,6 +786,17 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if self.mode == MODE_ON:
             return True, ELEC_BLOCK_NONE
 
+        # Apply post-start margin via _pump_continuous_on_since (debounced
+        # against brief pump cycling). Falls back to the run window logic
+        # if continuous_on tracking hasn't built up enough history yet.
+        if self._pump_continuous_on_since is not None:
+            on_for = (now - self._pump_continuous_on_since).total_seconds()
+            if on_for < post_start:
+                return False, ELEC_BLOCK_MARGIN
+        elif not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
+            return False, ELEC_BLOCK_MARGIN
+
+        # Pre-stop margin: still gated by the schedule window
         if not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
             return False, ELEC_BLOCK_MARGIN
 

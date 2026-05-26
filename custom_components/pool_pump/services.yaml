@@ -1,4 +1,24 @@
 # Pool Pump Manager services
+
 refresh:
   name: Refresh
   description: Recompute the schedule and reapply the pump/electrolyzer state immediately.
+
+backwash:
+  name: Start filter backwash
+  description: Force the pump ON and the electrolyzer OFF for a fixed duration, then return to automatic mode. Use after a filter clean or to flush a fresh dose of chemicals.
+  fields:
+    duration_minutes:
+      name: Duration (minutes)
+      description: How long to keep the pump ON with the cell OFF. Defaults to the value set in the integration options (5 min if not changed).
+      example: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+
+cancel_backwash:
+  name: Cancel backwash
+  description: Stop an in-progress backwash cycle and return to automatic mode.
