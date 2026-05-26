@@ -2,14 +2,22 @@
 
 Schedule logic (no external lib):
   - total_hours = T/2 (or T/3 below 13°C), clamped to [min_hours, max_hours]
-  - if a forecast max sensor is configured and forecast >= heatwave_threshold,
+  - if a forecast max sensor reads at or above the heatwave threshold,
     total_hours is forced to max_hours
   - the run is centered on the configured pivot hour (default 14:00 local),
-    optionally split into two runs with a break in the middle
+    optionally split into two with a midday break
 
-Pump and electrolyzer states are derived from the schedule at every tick;
-no delayed callbacks. The electrolyzer is on when the pump has been running
-for at least post_start_delay AND will keep running for at least pre_stop_delay.
+Temperature source:
+  - `water` mode: the configured sensor IS the water temperature (probe).
+  - `air_model` mode: the configured sensor is air temperature; the
+    coordinator integrates a 1st-order thermal model with configurable
+    time constant tau to estimate water temperature. State is persisted
+    across HA restarts via `homeassistant.helpers.storage.Store`.
+
+Electrolyzer (optional):
+  - On only inside [run.start + post_start_delay, run.end - pre_stop_delay]
+  - Blocked when water temperature is below `electrolyzer_min_temp` or
+    above `electrolyzer_max_temp` (literature-backed cell protection)
 """
 from __future__ import annotations
 
@@ -20,12 +28,15 @@ from typing import Any
 
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
     COLD_THRESHOLD_CELSIUS,
     CONF_BREAK_HOURS,
+    CONF_ELECTROLYZER_MAX_TEMP,
+    CONF_ELECTROLYZER_MIN_TEMP,
     CONF_ELECTROLYZER_POST_START_DELAY,
     CONF_ELECTROLYZER_PRE_STOP_DELAY,
     CONF_ELECTROLYZER_SWITCH,
@@ -34,10 +45,26 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_POOL_HAS_COVER,
+    CONF_POOL_PRESET,
     CONF_PUMP_SWITCH,
+    CONF_TAU_HOURS,
+    CONF_TEMPERATURE_MODE,
+    CONF_TEMPERATURE_OFFSET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WATER_LEVEL_CRITICAL,
+    DEFAULT_ELECTROLYZER_MAX_TEMP,
+    DEFAULT_ELECTROLYZER_MIN_TEMP,
+    DEFAULT_TAU_HOURS,
+    DEFAULT_TEMPERATURE_MODE,
+    DEFAULT_TEMPERATURE_OFFSET,
     DOMAIN,
+    ELEC_BLOCK_MANUAL,
+    ELEC_BLOCK_MARGIN,
+    ELEC_BLOCK_NONE,
+    ELEC_BLOCK_PUMP_OFF,
+    ELEC_BLOCK_TEMP_HIGH,
+    ELEC_BLOCK_TEMP_LOW,
     MODE_AUTO,
     MODE_OFF,
     MODE_ON,
@@ -47,8 +74,13 @@ from .const import (
     RUN_REASON_MANUAL_ON,
     RUN_REASON_OFF,
     RUN_REASON_WATER_LOW,
+    STORAGE_KEY_TEMPLATE,
+    STORAGE_VERSION,
+    TEMP_MODE_AIR_MODEL,
+    TEMP_MODE_WATER,
     UPDATE_INTERVAL,
 )
+from .presets import compute_tau_hours, get_preset, render_pool_svg
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +101,8 @@ class PoolPumpData:
     """Snapshot of the coordinator state, consumed by entities."""
 
     temperature_used: float | None = None
+    temperature_mode: str = TEMP_MODE_WATER
+    air_temperature_raw: float | None = None
     forecast_value: float | None = None
     duration_hours: float = 0.0
     runs: list[Run] = field(default_factory=list)
@@ -76,9 +110,12 @@ class PoolPumpData:
     next_end: datetime | None = None
     pump_should_be_on: bool = False
     electrolyzer_should_be_on: bool = False
+    electrolyzer_block_reason: str = ELEC_BLOCK_NONE
     reason: str = RUN_REASON_OFF
     mode: str = MODE_AUTO
     heatwave_active: bool = False
+    pool_preset: dict | None = None
+    pool_svg: str = ""
 
 
 def compute_duration(
@@ -123,6 +160,31 @@ def build_runs(
     return [Run(first_start, first_end), Run(second_start, second_end)]
 
 
+def update_thermal_model(
+    current_water: float | None,
+    air_temp: float,
+    *,
+    offset: float,
+    tau_hours: float,
+    dt_seconds: float,
+) -> float:
+    """First-order RC model: dT_w/dt = (T_air + offset - T_w) / tau.
+
+    Discretized as T_w[n+1] = T_w[n] + alpha * (T_target - T_w[n]) with
+    alpha = 1 - exp(-dt/tau) for numerical stability across long gaps.
+    If no prior state is known, the model bootstraps at T_air + offset.
+    """
+    from math import exp
+
+    target = air_temp + offset
+    if current_water is None or tau_hours <= 0 or dt_seconds < 0:
+        return target
+
+    tau_seconds = tau_hours * 3600.0
+    alpha = 1.0 - exp(-dt_seconds / tau_seconds)
+    return current_water + alpha * (target - current_water)
+
+
 def _read_float(hass: HomeAssistant, entity_id: str | None) -> float | None:
     if not entity_id:
         return None
@@ -141,10 +203,10 @@ def _pivot_for_day(day: datetime, pivot_hour: int) -> datetime:
     )
 
 
-def _electrolyzer_target(
+def _electrolyzer_window_ok(
     runs: list[Run], now: datetime, post_start: int, pre_stop: int
 ) -> bool:
-    """True iff `now` falls inside a run, with the post-start and pre-stop margins applied."""
+    """True iff `now` falls inside a run with the post-start and pre-stop margins applied."""
     post_start_td = timedelta(seconds=post_start)
     pre_stop_td = timedelta(seconds=pre_stop)
     for r in runs:
@@ -156,7 +218,9 @@ def _electrolyzer_target(
 class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     """Compute schedule and drive the pump and electrolyzer switches."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str, options: dict[str, Any]) -> None:
+    def __init__(
+        self, hass: HomeAssistant, entry_id: str, options: dict[str, Any]
+    ) -> None:
         super().__init__(
             hass,
             _LOGGER,
@@ -166,9 +230,41 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self.entry_id = entry_id
         self.options = options
         self.mode: str = MODE_AUTO
+        self._water_modeled: float | None = None
+        self._last_model_update: datetime | None = None
+        self._store: Store = Store(
+            hass,
+            STORAGE_VERSION,
+            STORAGE_KEY_TEMPLATE.format(entry_id=entry_id),
+        )
+
+    async def async_load_persisted(self) -> None:
+        """Load the modeled water temp from disk (called once after init)."""
+        stored = await self._store.async_load()
+        if not stored:
+            return
+        self._water_modeled = stored.get("water_temp")
+        last = stored.get("last_update")
+        if last:
+            try:
+                self._last_model_update = datetime.fromisoformat(last)
+            except ValueError:
+                self._last_model_update = None
+
+    async def _async_save_model(self) -> None:
+        await self._store.async_save(
+            {
+                "water_temp": self._water_modeled,
+                "last_update": (
+                    self._last_model_update.isoformat()
+                    if self._last_model_update
+                    else None
+                ),
+            }
+        )
 
     def set_mode(self, mode: str) -> None:
-        """Change the manual mode and force a refresh."""
+        """Change manual mode and force a refresh."""
         self.mode = mode
         self.hass.async_create_task(self.async_request_refresh())
 
@@ -179,6 +275,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         temp_id: str = self.options[CONF_TEMPERATURE_SENSOR]
         forecast_id: str | None = self.options.get(CONF_FORECAST_SENSOR)
         water_low_id: str | None = self.options.get(CONF_WATER_LEVEL_CRITICAL)
+        temp_mode: str = self.options.get(CONF_TEMPERATURE_MODE, DEFAULT_TEMPERATURE_MODE)
+        data.temperature_mode = temp_mode
 
         min_h = float(self.options.get(CONF_MIN_HOURS, 2.0))
         max_h = float(self.options.get(CONF_MAX_HOURS, 24.0))
@@ -187,20 +285,64 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         heatwave_threshold = float(self.options.get(CONF_HEATWAVE_THRESHOLD, 28.0))
         post_start = int(self.options.get(CONF_ELECTROLYZER_POST_START_DELAY, 120))
         pre_stop = int(self.options.get(CONF_ELECTROLYZER_PRE_STOP_DELAY, 60))
+        elec_min = float(
+            self.options.get(CONF_ELECTROLYZER_MIN_TEMP, DEFAULT_ELECTROLYZER_MIN_TEMP)
+        )
+        elec_max = float(
+            self.options.get(CONF_ELECTROLYZER_MAX_TEMP, DEFAULT_ELECTROLYZER_MAX_TEMP)
+        )
+        offset = float(
+            self.options.get(CONF_TEMPERATURE_OFFSET, DEFAULT_TEMPERATURE_OFFSET)
+        )
 
-        temp = _read_float(self.hass, temp_id)
-        forecast = _read_float(self.hass, forecast_id)
-        data.temperature_used = temp
-        data.forecast_value = forecast
+        preset_slug = self.options.get(CONF_POOL_PRESET)
+        preset = get_preset(preset_slug) if preset_slug else None
+        data.pool_preset = preset
 
-        # Always compute the day's schedule for visibility, even if we end up off.
+        # Tau: explicit option wins; otherwise derive from the preset if any.
+        if self.options.get(CONF_TAU_HOURS) is not None:
+            tau_hours = float(self.options[CONF_TAU_HOURS])
+        elif preset is not None:
+            tau_hours = compute_tau_hours(
+                preset, with_cover=bool(self.options.get(CONF_POOL_HAS_COVER))
+            )
+        else:
+            tau_hours = DEFAULT_TAU_HOURS
+
+        raw_temp = _read_float(self.hass, temp_id)
+        data.forecast_value = _read_float(self.hass, forecast_id)
+
+        if temp_mode == TEMP_MODE_AIR_MODEL and raw_temp is not None:
+            data.air_temperature_raw = raw_temp
+            dt_seconds = (
+                (now - self._last_model_update).total_seconds()
+                if self._last_model_update
+                else 0.0
+            )
+            self._water_modeled = update_thermal_model(
+                self._water_modeled,
+                raw_temp,
+                offset=offset,
+                tau_hours=tau_hours,
+                dt_seconds=dt_seconds,
+            )
+            self._last_model_update = now
+            await self._async_save_model()
+            data.temperature_used = self._water_modeled
+        elif temp_mode == TEMP_MODE_WATER:
+            data.temperature_used = raw_temp
+        else:
+            # Air mode but air sensor unavailable
+            data.air_temperature_raw = None
+            data.temperature_used = self._water_modeled  # last known modeled value
+
         pivot = _pivot_for_day(now, pivot_hour)
-        if temp is not None:
+        if data.temperature_used is not None:
             duration, heatwave = compute_duration(
-                temp,
+                data.temperature_used,
                 min_hours=min_h,
                 max_hours=max_h,
-                forecast_value=forecast,
+                forecast_value=data.forecast_value,
                 heatwave_threshold=heatwave_threshold,
             )
             data.duration_hours = duration
@@ -208,28 +350,45 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             data.runs = build_runs(pivot, duration, break_h)
             data.next_start, data.next_end = self._compute_next_window(data.runs, now)
 
-        # Decide pump + electrolyzer targets
         pump_target, reason = self._decide_pump(now, data, water_low_id)
-        elec_target = (
-            pump_target
-            and bool(self.options.get(CONF_ELECTROLYZER_SWITCH))
-            and self.mode != MODE_OFF
-            and (
-                self.mode == MODE_ON
-                or _electrolyzer_target(data.runs, now, post_start, pre_stop)
-            )
+        elec_target, elec_block = self._decide_electrolyzer(
+            now,
+            data,
+            pump_target=pump_target,
+            post_start=post_start,
+            pre_stop=pre_stop,
+            elec_min=elec_min,
+            elec_max=elec_max,
         )
 
         data.pump_should_be_on = pump_target
         data.electrolyzer_should_be_on = elec_target
+        data.electrolyzer_block_reason = elec_block
         data.reason = reason
+
+        if preset is not None:
+            svg_state = self._svg_state(pump_target, reason)
+            data.pool_svg = render_pool_svg(
+                preset,
+                state=svg_state,
+                temperature=data.temperature_used,
+                duration_hours=data.duration_hours,
+            )
 
         await self._apply_switch(self.options[CONF_PUMP_SWITCH], pump_target, "pump", reason)
         elec_id = self.options.get(CONF_ELECTROLYZER_SWITCH)
         if elec_id:
-            await self._apply_switch(elec_id, elec_target, "electrolyzer", reason)
+            await self._apply_switch(elec_id, elec_target, "electrolyzer", elec_block)
 
         return data
+
+    @staticmethod
+    def _svg_state(pump_on: bool, reason: str) -> str:
+        if reason == RUN_REASON_MANUAL_OFF:
+            return "forced_off"
+        if pump_on:
+            return "running"
+        return "idle"
 
     def _decide_pump(
         self, now: datetime, data: PoolPumpData, water_low_id: str | None
@@ -252,6 +411,39 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
 
         return False, RUN_REASON_OFF
 
+    def _decide_electrolyzer(
+        self,
+        now: datetime,
+        data: PoolPumpData,
+        *,
+        pump_target: bool,
+        post_start: int,
+        pre_stop: int,
+        elec_min: float,
+        elec_max: float,
+    ) -> tuple[bool, str]:
+        if not self.options.get(CONF_ELECTROLYZER_SWITCH):
+            return False, ELEC_BLOCK_NONE
+        if self.mode == MODE_OFF:
+            return False, ELEC_BLOCK_MANUAL
+        if not pump_target:
+            return False, ELEC_BLOCK_PUMP_OFF
+
+        if data.temperature_used is not None:
+            if data.temperature_used < elec_min:
+                return False, ELEC_BLOCK_TEMP_LOW
+            if data.temperature_used > elec_max:
+                return False, ELEC_BLOCK_TEMP_HIGH
+
+        # In manual ON mode the cell follows the pump immediately (no schedule margins).
+        if self.mode == MODE_ON:
+            return True, ELEC_BLOCK_NONE
+
+        if not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
+            return False, ELEC_BLOCK_MARGIN
+
+        return True, ELEC_BLOCK_NONE
+
     @staticmethod
     def _compute_next_window(
         runs: list[Run], now: datetime
@@ -261,7 +453,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         for r in runs:
             if now < r.end:
                 return r.start, r.end
-        return runs[0].start, runs[-1].end  # today's runs are past, show last as reference
+        return runs[0].start, runs[-1].end  # today's runs are past
 
     async def _apply_switch(
         self, entity_id: str, target_on: bool, label: str, reason: str

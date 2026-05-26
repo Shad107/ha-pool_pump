@@ -19,6 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Pool Pump Manager from a config entry."""
     options = {**entry.data, **entry.options}
     coordinator = PoolPumpCoordinator(hass, entry.entry_id, options)
+    await coordinator.async_load_persisted()
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator

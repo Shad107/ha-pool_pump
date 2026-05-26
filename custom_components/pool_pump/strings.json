@@ -3,16 +3,21 @@
     "step": {
       "user": {
         "title": "Pool Pump Manager",
-        "description": "Pick the pump switch and the temperature source. Water temperature gives best results; a daily-mean air temperature is an acceptable fallback.",
+        "description": "Pick the pump switch, the temperature mode, and the temperature source. Use 'Water sensor' if you have a probe; otherwise 'Air-based model' integrates a thermal model from an air temperature input.",
         "data": {
           "pump_switch": "Pool pump switch",
-          "temperature_sensor": "Temperature sensor (water or daily-mean air)"
+          "temperature_mode": "Temperature mode",
+          "temperature_sensor": "Temperature sensor (water probe or air temp)"
         }
       },
       "options": {
-        "title": "Scheduling and electrolyzer",
-        "description": "Duration is computed as temperature / 2 (or /3 below 13 °C), clamped between min and max hours, centered on the pivot hour. A forecast sensor above the heatwave threshold forces max hours.",
+        "title": "Pool, scheduling and electrolyzer",
+        "description": "Pick the pool model (drives the dashboard visual and, in air-based mode, the default thermal time constant). Duration is computed as temperature / 2 (or /3 below 13 °C), clamped between min and max hours, centered on the pivot hour. A forecast sensor above the heatwave threshold forces max hours.",
         "data": {
+          "pool_preset": "Pool model",
+          "pool_has_cover": "Pool has a cover (slower thermal response)",
+          "tau_hours": "Thermal time constant τ (hours, blank = derive from pool model)",
+          "temperature_offset": "Air → water offset (°C, default 0)",
           "min_hours": "Minimum run duration (hours)",
           "max_hours": "Maximum run duration (hours)",
           "break_hours": "Midday break duration (hours; 0 = no split)",
@@ -22,6 +27,8 @@
           "electrolyzer_switch": "Electrolyzer switch (optional)",
           "electrolyzer_post_start_delay": "Electrolyzer ON delay after pump start (s)",
           "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
+          "electrolyzer_min_temp": "Electrolyzer min water temp (°C; cell off below)",
+          "electrolyzer_max_temp": "Electrolyzer max water temp (°C; cell off above)",
           "water_level_critical": "Low-water binary sensor (optional; pump stays off when on)"
         }
       }
@@ -35,6 +42,10 @@
       "init": {
         "title": "Pool Pump Manager — options",
         "data": {
+          "pool_preset": "Pool model",
+          "pool_has_cover": "Pool has a cover",
+          "tau_hours": "Thermal time constant τ (hours, blank = derive from pool model)",
+          "temperature_offset": "Air → water offset (°C)",
           "min_hours": "Minimum run duration (hours)",
           "max_hours": "Maximum run duration (hours)",
           "break_hours": "Midday break duration (hours; 0 = no split)",
@@ -44,8 +55,18 @@
           "electrolyzer_switch": "Electrolyzer switch (optional)",
           "electrolyzer_post_start_delay": "Electrolyzer ON delay after pump start (s)",
           "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
+          "electrolyzer_min_temp": "Electrolyzer min water temp (°C)",
+          "electrolyzer_max_temp": "Electrolyzer max water temp (°C)",
           "water_level_critical": "Low-water binary sensor (optional)"
         }
+      }
+    }
+  },
+  "selector": {
+    "temperature_mode": {
+      "options": {
+        "water": "Water sensor (probe)",
+        "air_model": "Air-based model (no probe)"
       }
     }
   },
@@ -65,7 +86,8 @@
       "end_time": {"name": "Pump end time"},
       "duration": {"name": "Pump daily duration"},
       "temperature_used": {"name": "Temperature used"},
-      "status": {"name": "Status"}
+      "status": {"name": "Status"},
+      "pool": {"name": "Pool"}
     },
     "binary_sensor": {
       "pump_target": {"name": "Pump should be on"},

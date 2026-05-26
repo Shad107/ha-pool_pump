@@ -3,16 +3,21 @@
     "step": {
       "user": {
         "title": "Pool Pump Manager",
-        "description": "Sélectionne le switch de la pompe et la source de température. Une sonde d'eau donne les meilleurs résultats ; à défaut, la moyenne journalière de température de l'air est acceptable.",
+        "description": "Choisis le switch de la pompe, le mode de température et la source de température. « Sonde d'eau » si tu en as une ; sinon « Modèle basé sur l'air » intègre un modèle thermique à partir d'un capteur de T° air.",
         "data": {
           "pump_switch": "Switch de la pompe de piscine",
-          "temperature_sensor": "Capteur de température (eau ou moyenne journalière de l'air)"
+          "temperature_mode": "Mode de température",
+          "temperature_sensor": "Capteur de température (sonde d'eau ou T° air)"
         }
       },
       "options": {
-        "title": "Horaire et électrolyseur",
-        "description": "La durée est T / 2 (ou T / 3 sous 13 °C), bornée entre min et max heures, centrée sur l'heure pivot. Si un capteur de forecast est renseigné et qu'il atteint le seuil canicule, la durée passe à max heures.",
+        "title": "Piscine, horaire et électrolyseur",
+        "description": "Choisis le modèle de piscine (alimente le visuel du dashboard et, en mode air, la constante thermique par défaut). La durée est T / 2 (ou T / 3 sous 13 °C), bornée min/max, centrée sur l'heure pivot. Si un capteur de forecast atteint le seuil canicule, la durée passe à max.",
         "data": {
+          "pool_preset": "Modèle de piscine",
+          "pool_has_cover": "Piscine avec bâche (réponse thermique plus lente)",
+          "tau_hours": "Constante thermique τ (heures, vide = déduite du modèle)",
+          "temperature_offset": "Offset air → eau (°C, défaut 0)",
           "min_hours": "Durée minimale (heures)",
           "max_hours": "Durée maximale (heures)",
           "break_hours": "Pause de mi-journée (heures ; 0 = pas de coupure)",
@@ -22,6 +27,8 @@
           "electrolyzer_switch": "Switch de l'électrolyseur (optionnel)",
           "electrolyzer_post_start_delay": "Délai ON électrolyseur après démarrage pompe (s)",
           "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
+          "electrolyzer_min_temp": "T° eau min électrolyseur (°C ; cellule OFF sous)",
+          "electrolyzer_max_temp": "T° eau max électrolyseur (°C ; cellule OFF au-delà)",
           "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel ; bloque la pompe si ON)"
         }
       }
@@ -35,6 +42,10 @@
       "init": {
         "title": "Pool Pump Manager — options",
         "data": {
+          "pool_preset": "Modèle de piscine",
+          "pool_has_cover": "Piscine avec bâche",
+          "tau_hours": "Constante thermique τ (heures, vide = déduite du modèle)",
+          "temperature_offset": "Offset air → eau (°C)",
           "min_hours": "Durée minimale (heures)",
           "max_hours": "Durée maximale (heures)",
           "break_hours": "Pause de mi-journée (heures ; 0 = pas de coupure)",
@@ -44,8 +55,18 @@
           "electrolyzer_switch": "Switch de l'électrolyseur (optionnel)",
           "electrolyzer_post_start_delay": "Délai ON électrolyseur après démarrage pompe (s)",
           "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
+          "electrolyzer_min_temp": "T° eau min électrolyseur (°C)",
+          "electrolyzer_max_temp": "T° eau max électrolyseur (°C)",
           "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel)"
         }
+      }
+    }
+  },
+  "selector": {
+    "temperature_mode": {
+      "options": {
+        "water": "Sonde d'eau",
+        "air_model": "Modèle basé sur l'air (pas de sonde)"
       }
     }
   },
@@ -65,7 +86,8 @@
       "end_time": {"name": "Heure de fin"},
       "duration": {"name": "Durée journalière"},
       "temperature_used": {"name": "Température utilisée"},
-      "status": {"name": "Statut"}
+      "status": {"name": "Statut"},
+      "pool": {"name": "Piscine"}
     },
     "binary_sensor": {
       "pump_target": {"name": "Pompe doit tourner"},

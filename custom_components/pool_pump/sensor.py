@@ -29,6 +29,7 @@ async def async_setup_entry(
             DurationSensor(coordinator, entry),
             TemperatureUsedSensor(coordinator, entry),
             StatusSensor(coordinator, entry),
+            PoolGeometrySensor(coordinator, entry),
         ]
     )
 
@@ -117,8 +118,48 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "mode": d.mode,
             "heatwave_active": d.heatwave_active,
             "forecast_value": d.forecast_value,
+            "electrolyzer_block_reason": d.electrolyzer_block_reason,
+            "temperature_mode": d.temperature_mode,
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs
             ],
+        }
+
+
+class PoolGeometrySensor(PoolPumpEntity, SensorEntity):
+    """Exposes pool model name + geometry + inline SVG for the dashboard card.
+
+    The state is the friendly model name, with the SVG and the geometry in
+    attributes so a Lovelace markdown card can render the visual via
+    ``{{ state_attr('sensor.pool_pump_manager_pool', 'svg') }}``.
+    """
+
+    _attr_translation_key = "pool"
+    _attr_icon = "mdi:pool"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_pool"
+
+    @property
+    def native_value(self):
+        d = self.coordinator.data
+        if not d or not d.pool_preset:
+            return "custom"
+        return d.pool_preset["name"]
+
+    @property
+    def extra_state_attributes(self):
+        d = self.coordinator.data
+        if not d:
+            return None
+        preset = d.pool_preset or {}
+        return {
+            "shape": preset.get("shape"),
+            "volume_m3": preset.get("volume_m3"),
+            "surface_m2": preset.get("surface_m2"),
+            "depth_m": preset.get("depth_m"),
+            "manufacturer": preset.get("manufacturer"),
+            "svg": d.pool_svg or "",
         }

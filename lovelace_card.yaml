@@ -1,16 +1,23 @@
 # Pool Pump Manager — dashboard card template
 #
-# Paste this into a Manual card. Replace XXX in the entity IDs with the
-# integration's slug if HA renamed it (default device name is
-# "pool_pump_manager"). Pump and electrolyzer switches are the entities
-# you configured at install time — replace switch.prise_pompe_piscine and
-# switch.prise_electrolyseur_piscine accordingly.
+# Paste this into a Manual card. The visual pool shape comes from the
+# `sensor.pool_pump_manager_pool` entity, which holds the inline SVG in
+# its `svg` attribute. Color reflects the pump state (idle / running /
+# forced off). When no pool preset is configured the SVG attribute is
+# empty and the markdown card simply renders nothing.
+#
+# Replace switch.prise_pompe_piscine and switch.prise_electrolyseur_piscine
+# with your own switches if different.
 
 type: vertical-stack
 cards:
   - type: heading
     heading: Piscine
     icon: mdi:pool
+
+  - type: markdown
+    content: |
+      {{ state_attr('sensor.pool_pump_manager_pool', 'svg') }}
 
   - type: tile
     entity: select.pool_pump_manager_mode
