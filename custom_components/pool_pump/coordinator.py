@@ -93,6 +93,7 @@ from .const import (
     RUN_REASON_MANUAL_OFF,
     RUN_REASON_MANUAL_ON,
     RUN_REASON_OFF,
+    RUN_REASON_PUMP_ONLY,
     RUN_REASON_WATER_LOW,
     RUN_REASON_WINTERIZATION,
     STORAGE_KEY_TEMPLATE,
@@ -726,6 +727,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
 
         if self.mode == MODE_ON:
             return True, RUN_REASON_MANUAL_ON
+        if self.mode == MODE_PUMP_ONLY:
+            # Forced pump ON like manual mode, but the cell is blocked
+            # in _decide_electrolyzer. Use case: chlorine shock — pump
+            # must run continuously to mix the dose, cell off.
+            return True, RUN_REASON_PUMP_ONLY
         if self.mode == MODE_OFF:
             return False, RUN_REASON_MANUAL_OFF
 
