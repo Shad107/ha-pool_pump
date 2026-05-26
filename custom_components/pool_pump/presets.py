@@ -118,6 +118,31 @@ def compute_tau_hours(preset: dict, *, with_cover: bool = False) -> float:
     return depth * exposure_factor * cover_factor * 20.0
 
 
+def compute_solar_coefficient(preset: dict | None) -> float | None:
+    """Physics-derived k_sun (°C / hour at full sun) for the preset.
+
+    From the energy balance: at peak solar input (~800 W/m² absorbed),
+    a pool warms at:
+
+        dT/dt = (irradiance × surface × absorptivity) / (volume × ρ × c)
+              = (800 × surface × 0.8) / (volume × 1000 × 4180)  [°C/s]
+              ≈ 0.69 × surface_m² / volume_m³                     [°C/h]
+
+    Returns None if the preset lacks volume_m3 or surface_m2 (custom
+    pools without geometry), so the caller can fall back to a sane
+    default such as 0.6 °C/h.
+    """
+    if not preset:
+        return None
+    vol = preset.get("volume_m3")
+    surf = preset.get("surface_m2")
+    if not (isinstance(vol, (int, float)) and isinstance(surf, (int, float))):
+        return None
+    if vol <= 0 or surf <= 0:
+        return None
+    return round(0.69 * surf / vol, 3)
+
+
 
 def _pool_geometry(
     preset: dict,

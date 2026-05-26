@@ -179,9 +179,9 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
         schema[
             vol.Optional(
                 CONF_SOLAR_COEFFICIENT,
-                default=current.get(
-                    CONF_SOLAR_COEFFICIENT, DEFAULT_SOLAR_COEFFICIENT
-                ),
+                # `suggested_value` (not `default`) so blank stays blank
+                # and the coordinator can auto-derive from preset.
+                description={"suggested_value": current.get(CONF_SOLAR_COEFFICIENT)},
             )
         ] = NumberSelector(
             NumberSelectorConfig(min=0, max=3, step=0.1, mode=NumberSelectorMode.BOX)

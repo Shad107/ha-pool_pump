@@ -127,6 +127,8 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "solar_power_w": d.solar_power_w,
             "solar_peak_w": d.solar_peak_w,
             "solar_fraction": round(d.solar_fraction, 3) if d.solar_fraction else 0,
+            "solar_coefficient_effective": d.solar_coefficient_effective,
+            "tau_hours_effective": round(d.tau_hours_effective, 2) if d.tau_hours_effective else 0,
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs

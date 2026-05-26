@@ -87,7 +87,12 @@ from .const import (
     TEMP_MODE_WATER,
     UPDATE_INTERVAL,
 )
-from .presets import compute_tau_hours, get_preset, render_pool_svg
+from .presets import (
+    compute_solar_coefficient,
+    compute_tau_hours,
+    get_preset,
+    render_pool_svg,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,6 +134,8 @@ class PoolPumpData:
     solar_power_w: float | None = None
     solar_peak_w: float | None = None
     solar_fraction: float = 0.0
+    solar_coefficient_effective: float = 0.0
+    tau_hours_effective: float = 0.0
 
 
 def compute_duration(
@@ -389,11 +396,19 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 CONF_SMOOTHING_WINDOW_HOURS, DEFAULT_SMOOTHING_WINDOW_HOURS
             )
         )
-        k_sun = float(
-            self.options.get(CONF_SOLAR_COEFFICIENT, DEFAULT_SOLAR_COEFFICIENT)
-            if self.options.get(CONF_SOLAR_POWER_SENSOR)
-            else 0.0
-        )
+        # k_sun priority: explicit user override > physics-derived from
+        # preset geometry > generic 0.6 fallback. Forced to 0 when no
+        # solar sensor is configured (solar term disabled).
+        if not self.options.get(CONF_SOLAR_POWER_SENSOR):
+            k_sun = 0.0
+        elif self.options.get(CONF_SOLAR_COEFFICIENT) is not None:
+            k_sun = float(self.options[CONF_SOLAR_COEFFICIENT])
+        else:
+            derived = compute_solar_coefficient(preset)
+            k_sun = derived if derived is not None else DEFAULT_SOLAR_COEFFICIENT
+
+        data.solar_coefficient_effective = k_sun
+        data.tau_hours_effective = tau_hours
 
         if temp_mode == TEMP_MODE_AIR_MODEL and raw_temp is not None:
             data.air_temperature_raw = raw_temp
