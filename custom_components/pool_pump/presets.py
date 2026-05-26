@@ -144,49 +144,53 @@ def compute_solar_coefficient(preset: dict | None) -> float | None:
 
 
 
-def _pool_geometry(
-    preset: dict,
-    *,
-    canvas_w: int,
-    canvas_h: int,
-    coping_w: int,
-    wall_h: int,
-    pad_x: int,
-    pad_top: int,
-    pad_bot: int,
-) -> tuple[str, float, float, float, float, float, float]:
-    """Compute the water/coping bounding box honoring real aspect ratio.
 
-    For round pools the box is a square (matches the diameter). For
-    rect/oval pools, if ``length_m`` and ``width_m`` are present in the
-    preset, the box is sized to the real ratio length/width, fitted
-    inside the available canvas area.
+def _project_3q(x: float, y: float, z: float, scale: float) -> tuple[float, float]:
+    """Axonometric 3/4 view projection.
+
+    World coords:
+        x = length along the long axis (right)
+        y = width / depth into screen (away from viewer, top-left in image)
+        z = vertical drop into the pool from water surface (down)
+
+    Returns (screen_x, screen_y) in pixels, before any canvas offset.
+    Viewer is at upper-front-right corner of the pool, so we see:
+      - top water surface (parallelogram)
+      - front face (rectangle)
+      - left side wall (parallelogram)
+    The right side and the back walls are hidden.
     """
-    shape: str = preset.get("shape", "rect")
-    inner_w = canvas_w - 2 * pad_x
-    inner_h = canvas_h - pad_top - pad_bot - wall_h
+    sx = (x - 0.5 * y) * scale
+    sy = (z - 0.4 * y) * scale
+    return sx, sy
 
-    if shape == "round":
-        radius = min(inner_w, inner_h) / 2 - coping_w
-        cx, cy = canvas_w / 2, pad_top + radius + coping_w
-        return shape, cx - radius, cy - radius, cx + radius, cy + radius, cx, cy
 
-    length = float(preset.get("length_m") or 0)
-    width = float(preset.get("width_m") or 0)
-    ratio = (length / width) if (length > 0 and width > 0) else 1.77
+def _pool_real_dims(preset: dict) -> tuple[float, float, float]:
+    """Return (length_m, width_m, depth_m) for the preset.
 
-    available_w = inner_w - 2 * coping_w
-    available_h = inner_h - 2 * coping_w
-    if available_w / max(available_h, 1) > ratio:
-        rect_h = available_h
-        rect_w = rect_h * ratio
-    else:
-        rect_w = available_w
-        rect_h = rect_w / ratio
-
-    x = (canvas_w - rect_w) / 2
-    y = pad_top + coping_w + (available_h - rect_h) / 2
-    return shape, x, y, x + rect_w, y + rect_h, x + rect_w / 2, y + rect_h / 2
+    For round pools, length=width=diameter; depth from preset.
+    For rect/oval, uses length_m/width_m if present, else derives an
+    L:W ratio of 1.77 from surface_m2.
+    """
+    shape = preset.get("shape", "rect")
+    depth = float(preset.get("depth_m") or 1.0)
+    L = float(preset.get("length_m") or 0)
+    W = float(preset.get("width_m") or 0)
+    if L > 0 and W > 0:
+        return L, W, depth
+    surf = float(preset.get("surface_m2") or 0)
+    if shape == "round" and surf > 0:
+        from math import pi, sqrt
+        d = 2 * sqrt(surf / pi)
+        return d, d, depth
+    # Fallback: assume 1.77:1
+    if surf > 0:
+        # surf = L · W = L · L/1.77 → L = sqrt(surf · 1.77)
+        from math import sqrt
+        L = sqrt(surf * 1.77)
+        W = L / 1.77
+        return L, W, depth
+    return 4.0, 2.0, depth
 
 
 def render_pool_svg(
@@ -198,163 +202,207 @@ def render_pool_svg(
     width: int = 360,
     height: int = 220,
 ) -> str:
-    """Render a "looks like a real pool" inline SVG of the chosen preset.
+    """Render an axonometric 3/4 view of the pool.
 
-    Includes a wooden deck background with subtle plank lines, a white
-    concrete coping, a blue mosaic tile band hugging the water edge,
-    caustic light patterns inside the water, a sun glint, pool stairs in
-    the upper-right corner, and a side wall + ladder for aboveground
-    (Intex/Bestway) pools. Real aspect ratio is honored for rect/oval
-    presets that carry length_m/width_m.
+    The pool is drawn as if seen from the upper-front-right of a
+    poolside terrace: top water surface as a parallelogram (or
+    foreshortened ellipse for round pools), front wall as a vertical
+    rectangle, and the left side wall visible as another parallelogram.
+    For round/oval pools the surface is an ellipse with horizontal
+    radius unchanged and vertical radius squashed by perspective.
     """
+    shape = preset.get("shape", "rect")
     volume = preset.get("volume_m3")
     depth = preset.get("depth_m")
     mfr = preset.get("manufacturer", "")
     aboveground = mfr in ("Intex", "Bestway")
 
     palette = {
-        "idle":        {"top": "#7BC1E5", "mid": "#2F95C8", "bot": "#0F4A78", "tile": "#3a8fc5", "highlight": "#FFFFFFAA"},
-        "running":     {"top": "#5FB5E5", "mid": "#1F90D6", "bot": "#0A4B7A", "tile": "#1F84BD", "highlight": "#FFFFFFDD"},
-        "forced_off":  {"top": "#B0BCC4", "mid": "#7E8C95", "bot": "#4A555C", "tile": "#5d6970", "highlight": "#FFFFFF66"},
-        "unavailable": {"top": "#D4D7DA", "mid": "#9aa0a4", "bot": "#5C6268", "tile": "#7e858a", "highlight": "#FFFFFF55"},
+        "idle":        {"top": "#7BC1E5", "mid": "#2F95C8", "bot": "#0F4A78", "tile": "#3a8fc5", "highlight": "#FFFFFFAA", "wall_top": "#E2D6BD", "wall_bot": "#9A8268"},
+        "running":     {"top": "#5FB5E5", "mid": "#1F90D6", "bot": "#0A4B7A", "tile": "#1F84BD", "highlight": "#FFFFFFDD", "wall_top": "#E2D6BD", "wall_bot": "#9A8268"},
+        "forced_off":  {"top": "#B0BCC4", "mid": "#7E8C95", "bot": "#4A555C", "tile": "#5d6970", "highlight": "#FFFFFF66", "wall_top": "#C8C8C8", "wall_bot": "#888"},
+        "unavailable": {"top": "#D4D7DA", "mid": "#9aa0a4", "bot": "#5C6268", "tile": "#7e858a", "highlight": "#FFFFFF55", "wall_top": "#C8C8C8", "wall_bot": "#888"},
     }
     pal = palette.get(state, palette["idle"])
 
     pad_x = 22
-    pad_top = 14
+    pad_top = 20
     pad_bot = 30
-    coping_w = 6
-    wall_h = 14 if aboveground else 0
 
-    shape_kind, bl, bt, br, bb, cx, cy = _pool_geometry(
-        preset,
-        canvas_w=width,
-        canvas_h=height,
-        coping_w=coping_w,
-        wall_h=wall_h,
-        pad_x=pad_x,
-        pad_top=pad_top,
-        pad_bot=pad_bot,
-    )
-    wbox = br - bl
-    hbox = bb - bt
+    L, W, D = _pool_real_dims(preset)
 
-    # Pool shapes
-    if shape_kind == "round":
-        r = wbox / 2
-        water_shape = f'<circle class="pool-water" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="url(#water)" />'
-        coping_shape = f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r + coping_w:.1f}" fill="none" stroke="url(#coping)" stroke-width="{coping_w*2}" />'
-        tile_band = f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r - 2:.1f}" fill="none" stroke="{pal["tile"]}" stroke-width="3" stroke-dasharray="6 2" opacity="0.85" />'
-    elif shape_kind == "oval":
-        rx = wbox / 2
-        ry = hbox / 2
-        water_shape = f'<ellipse class="pool-water" cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="url(#water)" />'
-        coping_shape = f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx + coping_w:.1f}" ry="{ry + coping_w:.1f}" fill="none" stroke="url(#coping)" stroke-width="{coping_w*2}" />'
-        tile_band = f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx - 2:.1f}" ry="{ry - 2:.1f}" fill="none" stroke="{pal["tile"]}" stroke-width="3" stroke-dasharray="6 2" opacity="0.85" />'
+    # Compute scale so the projected pool fits in the inner canvas
+    proj_w = L + 0.5 * W   # x-extent of the projected box
+    proj_h = D + 0.4 * W   # y-extent
+    inner_w = width - 2 * pad_x
+    inner_h = height - pad_top - pad_bot
+    scale = min(inner_w / proj_w, inner_h / proj_h) * 0.92
+
+    # Center the projected pool in the canvas
+    proj_w_px = proj_w * scale
+    proj_h_px = proj_h * scale
+    origin_x = (width - proj_w_px) / 2 + 0.5 * W * scale  # back-top-left has x = +0.5W·scale
+    origin_y = pad_top + 0.4 * W * scale
+
+    def P(x, y, z):
+        sx, sy = _project_3q(x, y, z, scale)
+        return origin_x + sx, origin_y + sy
+
+    # 8 corners of the pool box
+    # x ∈ [0,L], y ∈ [0,W], z ∈ [0,D]; z=0 is water surface, z=D is floor
+    FTL = P(0, 0, 0)     # Front-Top-Left
+    FTR = P(L, 0, 0)
+    BTL = P(0, W, 0)     # Back-Top-Left
+    BTR = P(L, W, 0)
+    FBL = P(0, 0, D)
+    FBR = P(L, 0, D)
+    BBL = P(0, W, D)
+    BBR = P(L, W, D)
+
+    # Surface paths
+    if shape == "round" or shape == "oval":
+        # Top water: ellipse with rx = L/2 · scale, ry = (W/2) · 0.4 · scale  (squashed)
+        cx_top = (FTL[0] + BTR[0]) / 2  # rough center
+        cy_top = (FTL[1] + BTR[1]) / 2
+        rx_top = (L / 2) * scale
+        ry_top = (W / 2) * 0.4 * scale
+        water_surface = (
+            f'<ellipse class="pool-water" cx="{cx_top:.1f}" cy="{cy_top:.1f}" '
+            f'rx="{rx_top:.1f}" ry="{ry_top:.1f}" fill="url(#water)" />'
+        )
+        # Front-curved wall: ellipse arc going from the front-bottom edge of the surface to the floor
+        front_y = cy_top + ry_top
+        floor_y = front_y + D * scale
+        # Cylinder side: draw a path from (cx-rx, front_y) down to (cx-rx, floor_y) arc to (cx+rx, floor_y) up to (cx+rx, front_y)
+        # Use an arc for the bottom curve too
+        side_wall = (
+            f'<path d="M {cx_top-rx_top:.1f} {front_y:.1f} '
+            f'L {cx_top-rx_top:.1f} {floor_y:.1f} '
+            f'A {rx_top:.1f} {ry_top:.1f} 0 0 0 {cx_top+rx_top:.1f} {floor_y:.1f} '
+            f'L {cx_top+rx_top:.1f} {front_y:.1f} '
+            f'A {rx_top:.1f} {ry_top:.1f} 0 0 1 {cx_top-rx_top:.1f} {front_y:.1f} Z" '
+            f'fill="url(#wall_grad)" />'
+        )
+        coping_shape = (
+            f'<ellipse cx="{cx_top:.1f}" cy="{cy_top:.1f}" '
+            f'rx="{rx_top+3:.1f}" ry="{ry_top+1.5:.1f}" '
+            f'fill="none" stroke="url(#coping)" stroke-width="4" />'
+        )
+        tile_band = (
+            f'<ellipse cx="{cx_top:.1f}" cy="{cy_top:.1f}" '
+            f'rx="{rx_top-3:.1f}" ry="{ry_top-1.5:.1f}" '
+            f'fill="none" stroke="{pal["tile"]}" stroke-width="2.5" '
+            f'stroke-dasharray="5 2" opacity="0.85" />'
+        )
+        bbox = (cx_top - rx_top, cy_top - ry_top, cx_top + rx_top, cy_top + ry_top)
     else:
-        rxc = 8
-        water_shape = f'<rect class="pool-water" x="{bl:.1f}" y="{bt:.1f}" width="{wbox:.1f}" height="{hbox:.1f}" rx="{rxc}" ry="{rxc}" fill="url(#water)" />'
-        coping_shape = f'<rect x="{bl - coping_w:.1f}" y="{bt - coping_w:.1f}" width="{wbox + 2*coping_w:.1f}" height="{hbox + 2*coping_w:.1f}" rx="{rxc + coping_w}" ry="{rxc + coping_w}" fill="none" stroke="url(#coping)" stroke-width="{coping_w*2}" />'
-        tile_band = f'<rect x="{bl + 3:.1f}" y="{bt + 3:.1f}" width="{wbox - 6:.1f}" height="{hbox - 6:.1f}" rx="{rxc - 2}" ry="{rxc - 2}" fill="none" stroke="{pal["tile"]}" stroke-width="3" stroke-dasharray="6 2" opacity="0.85" />'
-
-    wall = ""
-    if aboveground:
-        if shape_kind == "round":
-            r = wbox / 2
-            wall = (
-                f'<path d="M {cx - r - coping_w:.1f} {cy:.1f} '
-                f'A {r + coping_w:.1f} {r + coping_w:.1f} 0 0 0 '
-                f'{cx + r + coping_w:.1f} {cy:.1f} '
-                f'L {cx + r + coping_w:.1f} {cy + wall_h:.1f} '
-                f'A {r + coping_w:.1f} {(r + coping_w) * 0.45:.1f} 0 0 1 '
-                f'{cx - r - coping_w:.1f} {cy + wall_h:.1f} Z" '
-                f'fill="url(#wall)" />'
-            )
-        elif shape_kind == "oval":
-            rx = wbox / 2
-            ry = hbox / 2
-            wall = (
-                f'<path d="M {cx - rx - coping_w:.1f} {cy:.1f} '
-                f'A {rx + coping_w:.1f} {ry + coping_w:.1f} 0 0 0 '
-                f'{cx + rx + coping_w:.1f} {cy:.1f} '
-                f'L {cx + rx + coping_w:.1f} {cy + wall_h:.1f} '
-                f'A {rx + coping_w:.1f} {(ry + coping_w) * 0.45:.1f} 0 0 1 '
-                f'{cx - rx - coping_w:.1f} {cy + wall_h:.1f} Z" '
-                f'fill="url(#wall)" />'
-            )
-        else:
-            wall = f'<rect x="{bl - coping_w:.1f}" y="{bb + coping_w:.1f}" width="{wbox + 2*coping_w:.1f}" height="{wall_h}" rx="2" ry="2" fill="url(#wall)" />'
-
-    # Caustic light patterns inside the water
-    caustics = ""
-    n_caustics = 6 if state == "running" else 4
-    for i in range(n_caustics):
-        frac_x = 0.18 + (i % 3) * 0.30
-        frac_y = 0.28 + (i // 3) * 0.32 + (i % 2) * 0.08
-        cxc = bl + wbox * frac_x
-        cyc = bt + hbox * frac_y
-        lc = wbox * (0.10 + (i % 2) * 0.04)
-        caustics += (
-            f'<path d="M {cxc:.1f} {cyc:.1f} '
-            f'q {lc/3:.1f} -3 {lc*2/3:.1f} 0 '
-            f't {lc:.1f} 0" '
-            f'stroke="{pal["highlight"]}" stroke-width="1.2" '
-            f'fill="none" stroke-linecap="round" opacity="0.45" />'
+        # Rectangular: water surface as a parallelogram polygon
+        water_surface = (
+            f'<polygon class="pool-water" '
+            f'points="{BTL[0]:.1f},{BTL[1]:.1f} '
+            f'{BTR[0]:.1f},{BTR[1]:.1f} '
+            f'{FTR[0]:.1f},{FTR[1]:.1f} '
+            f'{FTL[0]:.1f},{FTL[1]:.1f}" '
+            f'fill="url(#water)" />'
+        )
+        # Front wall: vertical rectangle (visible face)
+        # Left side wall: parallelogram (BTL → FTL → FBL → BBL)
+        side_wall = (
+            f'<polygon points="'
+            f'{FTL[0]:.1f},{FTL[1]:.1f} '
+            f'{FTR[0]:.1f},{FTR[1]:.1f} '
+            f'{FBR[0]:.1f},{FBR[1]:.1f} '
+            f'{FBL[0]:.1f},{FBL[1]:.1f}" '
+            f'fill="url(#wall_grad)" />'
+            f'<polygon points="'
+            f'{BTL[0]:.1f},{BTL[1]:.1f} '
+            f'{FTL[0]:.1f},{FTL[1]:.1f} '
+            f'{FBL[0]:.1f},{FBL[1]:.1f} '
+            f'{BBL[0]:.1f},{BBL[1]:.1f}" '
+            f'fill="url(#wall_grad_side)" opacity="0.85" />'
+        )
+        # Coping (white rim) — drawn as a slightly larger parallelogram outline behind the water
+        ext = 3 * scale / 50
+        coping_shape = (
+            f'<polygon points="'
+            f'{BTL[0]-ext:.1f},{BTL[1]-ext:.1f} '
+            f'{BTR[0]+ext:.1f},{BTR[1]-ext:.1f} '
+            f'{FTR[0]+ext:.1f},{FTR[1]+ext:.1f} '
+            f'{FTL[0]-ext:.1f},{FTL[1]+ext:.1f}" '
+            f'fill="none" stroke="url(#coping)" stroke-width="4" />'
+        )
+        # Tile band: smaller parallelogram inside
+        inset = max(3.0, 6 * scale / 100)
+        tile_band = (
+            f'<polygon points="'
+            f'{BTL[0]+inset:.1f},{BTL[1]+inset*0.5:.1f} '
+            f'{BTR[0]-inset:.1f},{BTR[1]+inset*0.5:.1f} '
+            f'{FTR[0]-inset:.1f},{FTR[1]-inset*0.5:.1f} '
+            f'{FTL[0]+inset:.1f},{FTL[1]-inset*0.5:.1f}" '
+            f'fill="none" stroke="{pal["tile"]}" stroke-width="2" '
+            f'stroke-dasharray="5 2" opacity="0.85" />'
+        )
+        bbox = (
+            min(BTL[0], FTL[0]),
+            BTL[1],
+            max(BTR[0], FTR[0]),
+            FTR[1],
         )
 
-    # Surface ripples (running only)
+    # Ripples on the water surface — running state
     ripples = ""
     if state == "running":
+        bl, bt, br, bb = bbox
+        wbox = br - bl
+        hbox = max(bb - bt, 1)
         cxw = (bl + br) / 2
-        for fy, fw in ((0.40, 0.42), (0.58, 0.36), (0.76, 0.28)):
+        for fy, fw in ((0.42, 0.55), (0.62, 0.45), (0.80, 0.35)):
             ry_pos = bt + hbox * fy
             half = wbox * fw / 2
             ripples += (
                 f'<path d="M {cxw-half:.1f} {ry_pos:.1f} '
-                f'q {half/2:.1f} -4 {half:.1f} 0 '
+                f'q {half/2:.1f} -3 {half:.1f} 0 '
                 f't {half:.1f} 0" '
-                f'stroke="{pal["highlight"]}" stroke-width="2" '
+                f'stroke="{pal["highlight"]}" stroke-width="1.6" '
                 f'fill="none" stroke-linecap="round" />'
             )
 
-    # Pool stairs — top-right corner of the water
-    stairs = ""
-    if wbox > 60 and hbox > 40:
-        sx = br - wbox * 0.16
-        sy = bt + hbox * 0.10
-        step_w = wbox * 0.12
-        for i in range(3):
-            stairs += (
-                f'<rect x="{sx:.1f}" y="{sy + i * 4:.1f}" '
-                f'width="{step_w:.1f}" height="3" '
-                f'rx="1.5" ry="1.5" fill="#FFFFFFAA" stroke="#FFFFFFDD" stroke-width="0.5" />'
-            )
-
-    # Sun glint — softer ellipse with a secondary sparkle
-    gx = bl + wbox * 0.20
-    gy = bt + hbox * 0.22
+    # Sun glint on the surface
+    glint_cx = (bbox[0] + bbox[2]) / 2 - (bbox[2] - bbox[0]) * 0.18
+    glint_cy = (bbox[1] + bbox[3]) / 2 - (bbox[3] - bbox[1]) * 0.20
     glint = (
-        f'<ellipse cx="{gx:.1f}" cy="{gy:.1f}" '
-        f'rx="{wbox * 0.16:.1f}" ry="{hbox * 0.07:.1f}" '
-        f'fill="#FFFFFF" opacity="0.30" transform="rotate(-22 {gx:.1f} {gy:.1f})" />'
-        f'<ellipse cx="{gx - 8:.1f}" cy="{gy - 4:.1f}" '
-        f'rx="{wbox * 0.05:.1f}" ry="{hbox * 0.03:.1f}" '
-        f'fill="#FFFFFF" opacity="0.55" transform="rotate(-22 {gx:.1f} {gy:.1f})" />'
+        f'<ellipse cx="{glint_cx:.1f}" cy="{glint_cy:.1f}" '
+        f'rx="{(bbox[2]-bbox[0])*0.14:.1f}" ry="{(bbox[3]-bbox[1])*0.06:.1f}" '
+        f'fill="#FFFFFF" opacity="0.35" transform="rotate(-12 {glint_cx:.1f} {glint_cy:.1f})" />'
     )
 
-    # Ladder for aboveground pools — small chrome rails on the right
+    # Aboveground ladder, drawn on the right side of the front wall going down
     ladder = ""
-    if aboveground:
-        lx = br + coping_w - 2
-        ly_top = bt - 4
-        ly_bot = bb + (wall_h if shape_kind == "rect" else wall_h - 2)
+    if aboveground and shape != "round" and shape != "oval":
+        lx = FTR[0] - 16
+        ly_top = FTR[1] - 3
+        ly_bot = FBR[1] + 3
         ladder = f'''
-        <g stroke="#D5D8DC" stroke-width="2.2" fill="none" stroke-linecap="round" filter="url(#ladder_shadow)">
+        <g stroke="#D5D8DC" stroke-width="1.8" fill="none" stroke-linecap="round" filter="url(#ladder_shadow)">
           <line x1="{lx:.1f}" y1="{ly_top:.1f}" x2="{lx:.1f}" y2="{ly_bot:.1f}"/>
-          <line x1="{lx + 7:.1f}" y1="{ly_top:.1f}" x2="{lx + 7:.1f}" y2="{ly_bot:.1f}"/>
-          <line x1="{lx:.1f}" y1="{ly_top + 6:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 6:.1f}"/>
-          <line x1="{lx:.1f}" y1="{ly_top + 18:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 18:.1f}"/>
-          <line x1="{lx:.1f}" y1="{ly_top + 30:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 30:.1f}"/>
+          <line x1="{lx + 6:.1f}" y1="{ly_top:.1f}" x2="{lx + 6:.1f}" y2="{ly_bot:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_top + 4:.1f}" x2="{lx + 6:.1f}" y2="{ly_top + 4:.1f}"/>
+          <line x1="{lx:.1f}" y1="{(ly_top + ly_bot)/2:.1f}" x2="{lx + 6:.1f}" y2="{(ly_top + ly_bot)/2:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_bot - 4:.1f}" x2="{lx + 6:.1f}" y2="{ly_bot - 4:.1f}"/>
+        </g>'''
+    elif aboveground:
+        # Round/oval: ladder on the right of the cylinder
+        bl, bt, br, bb = bbox
+        lx = br - 6
+        ly_top = bt + (bb - bt) * 0.5
+        ly_bot = bb + D * scale * 0.9
+        ladder = f'''
+        <g stroke="#D5D8DC" stroke-width="1.8" fill="none" stroke-linecap="round" filter="url(#ladder_shadow)">
+          <line x1="{lx:.1f}" y1="{ly_top:.1f}" x2="{lx:.1f}" y2="{ly_bot:.1f}"/>
+          <line x1="{lx + 6:.1f}" y1="{ly_top:.1f}" x2="{lx + 6:.1f}" y2="{ly_bot:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_top + 6:.1f}" x2="{lx + 6:.1f}" y2="{ly_top + 6:.1f}"/>
+          <line x1="{lx:.1f}" y1="{(ly_top + ly_bot)/2:.1f}" x2="{lx + 6:.1f}" y2="{(ly_top + ly_bot)/2:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_bot - 6:.1f}" x2="{lx + 6:.1f}" y2="{ly_bot - 6:.1f}"/>
         </g>'''
 
     badge_text = {"running": "POMPE", "idle": "veille", "forced_off": "ARRÊT", "unavailable": "?"}.get(state, "veille")
@@ -379,9 +427,13 @@ def render_pool_svg(
       <stop offset="0%"  stop-color="#FAF8F2" />
       <stop offset="100%" stop-color="#E8E4D8" />
     </linearGradient>
-    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#D8CCB8" />
-      <stop offset="100%" stop-color="#9E8B73" />
+    <linearGradient id="wall_grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="{pal["wall_top"]}" />
+      <stop offset="100%" stop-color="{pal["wall_bot"]}" />
+    </linearGradient>
+    <linearGradient id="wall_grad_side" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="{pal["wall_top"]}" />
+      <stop offset="100%" stop-color="#6E5840" />
     </linearGradient>
     <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#EADFC7" />
@@ -392,10 +444,6 @@ def render_pool_svg(
       <line x1="44" y1="0" x2="44" y2="240" stroke="#A99270" stroke-opacity="0.35" stroke-width="0.6" />
       <line x1="0" y1="0" x2="0" y2="240" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="0.5" />
     </pattern>
-    <radialGradient id="deck_shadow" cx="50%" cy="50%" r="55%">
-      <stop offset="0%"  stop-color="#000000" stop-opacity="0.18" />
-      <stop offset="80%" stop-color="#000000" stop-opacity="0" />
-    </radialGradient>
     <filter id="ladder_shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0.5" dy="1" stdDeviation="0.6" flood-opacity="0.35" />
     </filter>
@@ -404,19 +452,29 @@ def render_pool_svg(
   <rect x="0" y="0" width="{width}" height="{height}" fill="url(#planks)" rx="12" ry="12" />
   <rect x="0" y="0" width="{width}" height="{height}" fill="none" stroke="#A99270" stroke-opacity="0.3" stroke-width="1" rx="12" ry="12" />
 
-  <ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{wbox*0.62:.1f}" ry="{hbox*0.62:.1f}" fill="url(#deck_shadow)" />
+  <!-- Visible side wall + front face (drawn first, behind the water rim) -->
+  {side_wall}
 
-  {wall}
+  <!-- Concrete coping outline -->
   {coping_shape}
-  {water_shape}
+
+  <!-- Water surface -->
+  {water_surface}
+
+  <!-- Tile band inside the water -->
   {tile_band}
-  {caustics}
+
+  <!-- Sun glint and ripples -->
   {glint}
-  {stairs}
   {ripples}
+
+  <!-- Ladder for aboveground pools -->
   {ladder}
 
+  <!-- State badge (top-right) -->
   <rect x="{width - pad_x - 64}" y="8" width="64" height="20" rx="10" fill="{badge_color}" />
   <text x="{width - pad_x - 32}" y="22" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="white" font-weight="700">{badge_text}</text>
+
+  <!-- Compact bottom label -->
   <text x="{width / 2:.1f}" y="{label_y}" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#7a6743" font-weight="500" opacity="0.85">{bottom_label}</text>
 </svg>'''
