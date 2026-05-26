@@ -101,4 +101,6 @@ class PoolPumpCardEditor extends HTMLElement {
   }
 }
 
-customElements.define("pool-pump-card-editor", PoolPumpCardEditor);
+if (!customElements.get("pool-pump-card-editor")) {
+  customElements.define("pool-pump-card-editor", PoolPumpCardEditor);
+}

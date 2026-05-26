@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.1.0";
+const CARD_VERSION = "0.3.2";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -100,7 +100,14 @@ class PoolPumpCard extends HTMLElement {
       this.shadowRoot.appendChild(this._root);
     }
     if (!this._hass) {
-      this._root.innerHTML = `<div class="loading">Loading…</div>`;
+      // No hass yet (picker preview, or pre-attach). Render a neutral
+      // placeholder so the picker doesn't show an infinite spinner.
+      this._root.innerHTML = `
+        <div class="placeholder">
+          <ha-icon icon="mdi:pool"></ha-icon>
+          <div class="placeholder-title">Pool Pump Card</div>
+          <div class="placeholder-subtitle">Visuel + contrôles pour ta piscine</div>
+        </div>`;
       return;
     }
 
@@ -384,6 +391,27 @@ const STYLES = `
     text-align: center;
     color: var(--secondary-text-color);
   }
+  .placeholder {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--secondary-text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .placeholder ha-icon {
+    --mdc-icon-size: 36px;
+    color: var(--primary-color);
+  }
+  .placeholder-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
+  .placeholder-subtitle {
+    font-size: 12px;
+  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
@@ -394,17 +422,29 @@ const STYLES = `
   }
 `;
 
-customElements.define("pool-pump-card", PoolPumpCard);
+// Guard double-define (HA's scoped-custom-element-registry sometimes
+// invokes the module twice — once globally and once scoped to the
+// dashboard panel). Without this guard, the second call throws a
+// DOMException and kills the rest of the script's execution.
+if (!customElements.get("pool-pump-card")) {
+  customElements.define("pool-pump-card", PoolPumpCard);
+}
 
 // Register with HA's card picker so it shows up in "Add card" search.
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "pool-pump-card",
-  name: "Pool Pump Card",
-  description: "Visual + controls for the Shad107/ha-pool_pump integration",
-  preview: true,
-  documentationURL: "https://github.com/Shad107/pool-pump-card",
-});
+if (!window.customCards.some((c) => c.type === "pool-pump-card")) {
+  window.customCards.push({
+    type: "pool-pump-card",
+    name: "Pool Pump Card",
+    description: "Visuel + contrôles pour ta piscine (Pool Pump Manager)",
+    // preview: false — HA's picker tries to instantiate a live preview
+    // when preview is true, but doesn't always pass `hass` to the element,
+    // which can lock the preview thumbnail in an infinite spinner. Static
+    // name+description is safer.
+    preview: false,
+    documentationURL: "https://github.com/Shad107/ha-pool_pump",
+  });
+}
 
 console.info(
   `%c POOL-PUMP-CARD %c v${CARD_VERSION} `,

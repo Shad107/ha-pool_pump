@@ -72,11 +72,15 @@ def _temperature_mode_selector() -> SelectSelector:
 def _preset_selector() -> SelectSelector:
     options = [{"value": p["slug"], "label": p["name"]} for p in POOL_PRESETS]
     options.append({"value": PRESET_CUSTOM, "label": "Personnalisé (sans preset)"})
+    # No translation_key: with 43 presets, providing translations for each
+    # via strings.json is impractical. Without translations, HA can fall
+    # back to rendering options as "[object Object]" because the
+    # translation_key takes precedence over the inline `label`. Keeping
+    # only the inline label avoids that.
     return SelectSelector(
         SelectSelectorConfig(
             options=options,
             mode=SelectSelectorMode.DROPDOWN,
-            translation_key="pool_preset",
             custom_value=False,
         )
     )
