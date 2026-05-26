@@ -17,7 +17,12 @@ from .frontend_setup import JSModuleRegistration
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.SELECT, Platform.BINARY_SENSOR]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.BINARY_SENSOR,
+    Platform.SWITCH,
+]
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 CARD_FILE = "pool-pump-card.js"

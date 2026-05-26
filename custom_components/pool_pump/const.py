@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.9.3"
+VERSION = "0.9.4"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -98,3 +98,4 @@ ELEC_BLOCK_TEMP_HIGH = "temp_high"
 ELEC_BLOCK_MANUAL = "manual"
 ELEC_BLOCK_BACKWASH = "backwash"
 ELEC_BLOCK_WINTERIZATION = "winterization"
+ELEC_BLOCK_USER_DISABLED = "user_disabled"

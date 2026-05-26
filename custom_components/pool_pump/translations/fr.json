@@ -143,6 +143,11 @@
       "heatwave": {
         "name": "Mode canicule"
       }
+    },
+    "switch": {
+      "electrolyzer_enabled": {
+        "name": "Électrolyseur activé"
+      }
     }
   }
 }
