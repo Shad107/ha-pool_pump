@@ -33,7 +33,9 @@
           "smoothing_window_hours": "Air temperature smoothing window (hours, default 24)",
           "solar_power_sensor": "Instantaneous solar power sensor (W, optional)",
           "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
-          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)"
+          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
+          "pump_power_sensor": "Pump power sensor (W, optional)",
+          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)"
         }
       }
     },
@@ -65,7 +67,9 @@
           "smoothing_window_hours": "Air temperature smoothing window (hours, default 24)",
           "solar_power_sensor": "Instantaneous solar power sensor (W, optional)",
           "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
-          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)"
+          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
+          "pump_power_sensor": "Pump power sensor (W, optional)",
+          "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)"
         }
       }
     }
@@ -107,6 +111,15 @@
       },
       "pool": {
         "name": "Pool"
+      },
+      "current_power": {
+        "name": "Current power"
+      },
+      "energy_today": {
+        "name": "Energy today"
+      },
+      "energy_total": {
+        "name": "Energy total"
       }
     },
     "binary_sensor": {

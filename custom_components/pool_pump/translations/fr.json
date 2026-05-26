@@ -33,7 +33,9 @@
           "smoothing_window_hours": "Fenêtre de lissage T° air (heures, défaut 24)",
           "solar_power_sensor": "Capteur puissance solaire instantanée (W, optionnel)",
           "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
-          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)"
+          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
+          "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
+          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)"
         }
       }
     },
@@ -65,7 +67,9 @@
           "smoothing_window_hours": "Fenêtre de lissage T° air (heures, défaut 24)",
           "solar_power_sensor": "Capteur puissance solaire instantanée (W, optionnel)",
           "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
-          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)"
+          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
+          "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
+          "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)"
         }
       }
     }
@@ -107,6 +111,15 @@
       },
       "pool": {
         "name": "Piscine"
+      },
+      "current_power": {
+        "name": "Puissance actuelle"
+      },
+      "energy_today": {
+        "name": "Énergie aujourd'hui"
+      },
+      "energy_total": {
+        "name": "Énergie totale"
       }
     },
     "binary_sensor": {

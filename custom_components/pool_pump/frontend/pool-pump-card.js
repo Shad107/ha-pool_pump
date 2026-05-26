@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.6.0";
+const CARD_VERSION = "0.7.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -73,6 +73,8 @@ class PoolPumpCard extends HTMLElement {
       temperature_entity: config.temperature_entity ?? this._derive(config.pool_entity, "sensor", "temperature_utilisee", "temperature_used"),
       heatwave_entity: config.heatwave_entity ?? this._derive(config.pool_entity, "binary_sensor", "mode_canicule", "heatwave_override"),
       pump_target_entity: config.pump_target_entity ?? this._derive(config.pool_entity, "binary_sensor", "pompe_doit_tourner", "pump_should_be_on"),
+      power_entity: config.power_entity ?? this._derive(config.pool_entity, "sensor", "puissance_actuelle", "current_power"),
+      energy_today_entity: config.energy_today_entity ?? this._derive(config.pool_entity, "sensor", "energie_aujourd_hui", "energy_today"),
       pump_switch: config.pump_switch ?? null,
       electrolyzer_switch: config.electrolyzer_switch ?? null,
     };
@@ -170,11 +172,12 @@ class PoolPumpCard extends HTMLElement {
         </div>
 
         <div class="schedule">
-          ${cell("mdi:clock-start", "Début", fmtTime(start))}
-          ${cell("mdi:clock-end", "Fin",    fmtTime(end))}
-          ${cell("mdi:timer-sand", "Durée", duration ? `${parseFloat(duration.state).toFixed(1)} h` : "—")}
-          ${cell("mdi:thermometer", "T° eau", temp ? `${parseFloat(temp.state).toFixed(1)} °C` : "—")}
-          ${cell("mdi:state-machine", "État", status ? statusLabel(status.state) : "—")}
+          ${cell("mdi:clock-start", "Début", fmtTime(start), this._pick(c.start_entity))}
+          ${cell("mdi:clock-end", "Fin",    fmtTime(end), this._pick(c.end_entity))}
+          ${cell("mdi:timer-sand", "Durée", duration ? `${parseFloat(duration.state).toFixed(1)} h` : "—", this._pick(c.duration_entity))}
+          ${cell("mdi:thermometer", "T° eau", temp ? `${parseFloat(temp.state).toFixed(1)} °C` : "—", this._pick(c.temperature_entity))}
+          ${cell("mdi:state-machine", "État", status ? statusLabel(status.state) : "—", this._pick(c.status_entity))}
+          ${this._powerCells(c)}
         </div>
 
         <div class="actions">
@@ -192,6 +195,40 @@ class PoolPumpCard extends HTMLElement {
     btns[1].onclick = () => this._setMode("auto");
     btns[2].onclick = () => this._setMode("off");
     btns[3].onclick = () => this._refresh();
+
+    // Bind tap-to-more-info on each schedule cell that has data-entity
+    this._root.querySelectorAll("[data-entity]").forEach((el) => {
+      el.style.cursor = "pointer";
+      el.onclick = () => this._openMoreInfo(el.getAttribute("data-entity"));
+    });
+  }
+
+  _powerCells(c) {
+    const power = this._state(this._pick(c.power_entity));
+    const energy = this._state(this._pick(c.energy_today_entity));
+    if (!power && !energy) return "";
+    const out = [];
+    if (power) {
+      out.push(cell("mdi:flash", "Puissance",
+        `${parseFloat(power.state).toFixed(0)} W`,
+        this._pick(c.power_entity)));
+    }
+    if (energy) {
+      out.push(cell("mdi:lightning-bolt", "Énergie j.",
+        `${parseFloat(energy.state).toFixed(2)} kWh`,
+        this._pick(c.energy_today_entity)));
+    }
+    return out.join("");
+  }
+
+  _openMoreInfo(entityId) {
+    if (!entityId || !this._hass) return;
+    const event = new CustomEvent("hass-more-info", {
+      detail: { entityId },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
   }
 
   _setMode(option) {
@@ -238,9 +275,10 @@ function fmtTime(state) {
   }
 }
 
-function cell(icon, label, value) {
+function cell(icon, label, value, entityId) {
+  const dataAttr = entityId ? ` data-entity="${entityId}"` : "";
   return `
-    <div class="cell">
+    <div class="cell"${dataAttr}>
       <ha-icon icon="${icon}"></ha-icon>
       <div class="cell-text">
         <span class="cell-label">${label}</span>

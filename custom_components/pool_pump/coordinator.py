@@ -45,8 +45,10 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
+    CONF_PUMP_POWER_SENSOR,
     CONF_PUMP_SWITCH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
@@ -136,6 +138,11 @@ class PoolPumpData:
     solar_fraction: float = 0.0
     solar_coefficient_effective: float = 0.0
     tau_hours_effective: float = 0.0
+    pump_power_w: float | None = None
+    electrolyzer_power_w: float | None = None
+    total_power_w: float | None = None
+    energy_today_kwh: float = 0.0
+    energy_total_kwh: float = 0.0
 
 
 def compute_duration(
@@ -292,6 +299,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # window. Capped at ~3000 entries (≈50h of minutely ticks).
         self._air_samples: list[tuple[datetime, float]] = []
         self._max_samples: int = 3000
+        # Energy accumulators (Riemann sum of power × dt every tick).
+        self._energy_today_kwh: float = 0.0
+        self._energy_total_kwh: float = 0.0
+        self._last_energy_update: datetime | None = None
+        self._energy_today_date: str | None = None  # YYYY-MM-DD for daily reset
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -312,6 +324,16 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._air_samples.append((ts, float(entry["v"])))
             except (KeyError, ValueError, TypeError):
                 continue
+        # Energy accumulators
+        self._energy_today_kwh = float(stored.get("energy_today_kwh") or 0.0)
+        self._energy_total_kwh = float(stored.get("energy_total_kwh") or 0.0)
+        self._energy_today_date = stored.get("energy_today_date")
+        last_energy = stored.get("last_energy_update")
+        if last_energy:
+            try:
+                self._last_energy_update = datetime.fromisoformat(last_energy)
+            except ValueError:
+                self._last_energy_update = None
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -326,6 +348,14 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     {"t": t.isoformat(), "v": v}
                     for (t, v) in self._air_samples[-self._max_samples:]
                 ],
+                "energy_today_kwh": self._energy_today_kwh,
+                "energy_total_kwh": self._energy_total_kwh,
+                "energy_today_date": self._energy_today_date,
+                "last_energy_update": (
+                    self._last_energy_update.isoformat()
+                    if self._last_energy_update
+                    else None
+                ),
             }
         )
 
@@ -509,6 +539,33 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:
             await self._apply_switch(elec_id, elec_target, "electrolyzer", elec_block)
+
+        # Power and energy accounting (best-effort: requires user to
+        # configure pump_power_sensor / electrolyzer_power_sensor pointing
+        # at smart-plug power readings).
+        pump_pw = _read_float(self.hass, self.options.get(CONF_PUMP_POWER_SENSOR))
+        elec_pw = _read_float(self.hass, self.options.get(CONF_ELECTROLYZER_POWER_SENSOR))
+        data.pump_power_w = pump_pw
+        data.electrolyzer_power_w = elec_pw
+        if pump_pw is not None or elec_pw is not None:
+            data.total_power_w = (pump_pw or 0) + (elec_pw or 0)
+
+            # Riemann integration: kWh += W × dt_h / 1000
+            today_key = now.date().isoformat()
+            if self._energy_today_date != today_key:
+                self._energy_today_kwh = 0.0
+                self._energy_today_date = today_key
+            if self._last_energy_update is not None:
+                dt_h = (now - self._last_energy_update).total_seconds() / 3600
+                # Guard against huge dt after long HA downtime
+                if 0 < dt_h < 0.5:
+                    delta_kwh = data.total_power_w * dt_h / 1000
+                    self._energy_today_kwh += delta_kwh
+                    self._energy_total_kwh += delta_kwh
+            self._last_energy_update = now
+
+        data.energy_today_kwh = self._energy_today_kwh
+        data.energy_total_kwh = self._energy_total_kwh
 
         return data
 

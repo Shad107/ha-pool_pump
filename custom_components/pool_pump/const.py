@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -38,6 +38,8 @@ CONF_SMOOTHING_WINDOW_HOURS = "smoothing_window_hours"
 CONF_SOLAR_POWER_SENSOR = "solar_power_sensor"
 CONF_SOLAR_PEAK_SENSOR = "solar_peak_sensor"
 CONF_SOLAR_COEFFICIENT = "solar_coefficient"
+CONF_PUMP_POWER_SENSOR = "pump_power_sensor"
+CONF_ELECTROLYZER_POWER_SENSOR = "electrolyzer_power_sensor"
 
 DEFAULT_SMOOTHING_WINDOW_HOURS = 24.0
 DEFAULT_SOLAR_COEFFICIENT = 0.6  # °C / hour at full sun (P_solar = P_peak)

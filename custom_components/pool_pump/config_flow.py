@@ -30,8 +30,10 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
+    CONF_PUMP_POWER_SENSOR,
     CONF_PUMP_SWITCH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
@@ -269,6 +271,20 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_WATER_LEVEL_CRITICAL,
                 description={"suggested_value": current.get(CONF_WATER_LEVEL_CRITICAL)},
             ): EntitySelector(EntitySelectorConfig(domain="binary_sensor")),
+            vol.Optional(
+                CONF_PUMP_POWER_SENSOR,
+                description={"suggested_value": current.get(CONF_PUMP_POWER_SENSOR)},
+            ): EntitySelector(
+                EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
+            vol.Optional(
+                CONF_ELECTROLYZER_POWER_SENSOR,
+                description={
+                    "suggested_value": current.get(CONF_ELECTROLYZER_POWER_SENSOR)
+                },
+            ): EntitySelector(
+                EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
         }
     )
     return vol.Schema(schema)

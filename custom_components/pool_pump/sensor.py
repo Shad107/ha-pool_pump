@@ -7,11 +7,15 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import (
+    CONF_ELECTROLYZER_POWER_SENSOR,
+    CONF_PUMP_POWER_SENSOR,
+    DOMAIN,
+)
 from .coordinator import PoolPumpCoordinator
 from .entity import PoolPumpEntity
 
@@ -22,16 +26,23 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PoolPumpCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [
-            StartTimeSensor(coordinator, entry),
-            EndTimeSensor(coordinator, entry),
-            DurationSensor(coordinator, entry),
-            TemperatureUsedSensor(coordinator, entry),
-            StatusSensor(coordinator, entry),
-            PoolGeometrySensor(coordinator, entry),
-        ]
-    )
+    entities: list[SensorEntity] = [
+        StartTimeSensor(coordinator, entry),
+        EndTimeSensor(coordinator, entry),
+        DurationSensor(coordinator, entry),
+        TemperatureUsedSensor(coordinator, entry),
+        StatusSensor(coordinator, entry),
+        PoolGeometrySensor(coordinator, entry),
+    ]
+    # Power/energy entities only when at least one power sensor is configured.
+    opts = {**entry.data, **entry.options}
+    if opts.get(CONF_PUMP_POWER_SENSOR) or opts.get(CONF_ELECTROLYZER_POWER_SENSOR):
+        entities.extend([
+            CurrentPowerSensor(coordinator, entry),
+            EnergyTodaySensor(coordinator, entry),
+            EnergyTotalSensor(coordinator, entry),
+        ])
+    async_add_entities(entities)
 
 
 class StartTimeSensor(PoolPumpEntity, SensorEntity):
@@ -172,3 +183,67 @@ class PoolGeometrySensor(PoolPumpEntity, SensorEntity):
             "manufacturer": preset.get("manufacturer"),
             "svg": d.pool_svg or "",
         }
+
+
+class CurrentPowerSensor(PoolPumpEntity, SensorEntity):
+    _attr_translation_key = "current_power"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:flash"
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_current_power"
+
+    @property
+    def native_value(self):
+        d = self.coordinator.data
+        return d.total_power_w if d else None
+
+    @property
+    def extra_state_attributes(self):
+        d = self.coordinator.data
+        if not d:
+            return None
+        return {
+            "pump_power_w": d.pump_power_w,
+            "electrolyzer_power_w": d.electrolyzer_power_w,
+        }
+
+
+class EnergyTodaySensor(PoolPumpEntity, SensorEntity):
+    _attr_translation_key = "energy_today"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:lightning-bolt"
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_energy_today"
+
+    @property
+    def native_value(self):
+        d = self.coordinator.data
+        return round(d.energy_today_kwh, 3) if d else None
+
+
+class EnergyTotalSensor(PoolPumpEntity, SensorEntity):
+    _attr_translation_key = "energy_total"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:counter"
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_energy_total"
+
+    @property
+    def native_value(self):
+        d = self.coordinator.data
+        return round(d.energy_total_kwh, 2) if d else None
