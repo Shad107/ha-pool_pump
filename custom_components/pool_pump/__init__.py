@@ -7,40 +7,54 @@ from pathlib import Path
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, VERSION
+from .const import DOMAIN, URL_BASE, VERSION
 from .coordinator import PoolPumpCoordinator
+from .frontend_setup import JSModuleRegistration
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR, Platform.SELECT, Platform.BINARY_SENSOR]
 
-FRONTEND_URL_BASE = "/pool_pump_card_assets"
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 CARD_FILE = "pool-pump-card.js"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """One-shot setup: register the bundled Lovelace card with the frontend.
+    """One-shot setup: register the bundled Lovelace card.
 
-    Must run in async_setup (not async_setup_entry) so the static path and
-    extra JS URL are registered exactly once, regardless of how many
-    config entries the user creates.
+    For storage-mode dashboards, the card MUST be registered via the
+    Lovelace resources collection; only then is it loaded in the scoped
+    custom-element registry the picker uses for `whenDefined`. For
+    YAML-mode dashboards, `add_extra_js_url` is sufficient. We register
+    both, covering every user setup.
     """
+    # YAML-mode fallback (kept for users with mode: yaml in lovelace).
     if FRONTEND_DIR.is_dir() and (FRONTEND_DIR / CARD_FILE).exists():
-        await hass.http.async_register_static_paths(
-            [StaticPathConfig(FRONTEND_URL_BASE, str(FRONTEND_DIR), True)]
-        )
-        add_extra_js_url(hass, f"{FRONTEND_URL_BASE}/{CARD_FILE}?v={VERSION}")
-        _LOGGER.debug("Pool Pump Card registered at %s/%s", FRONTEND_URL_BASE, CARD_FILE)
+        try:
+            await hass.http.async_register_static_paths(
+                [StaticPathConfig(URL_BASE, str(FRONTEND_DIR), False)]
+            )
+        except RuntimeError:
+            pass  # already registered
+        add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={VERSION}")
+
+    # Storage-mode primary path — Lovelace resource registration. May
+    # need to wait until lovelace.resources.loaded becomes True.
+    async def _register_resource(_event=None):
+        try:
+            await JSModuleRegistration(hass).async_register()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Lovelace resource registration failed: %s", err)
+
+    if hass.state == CoreState.running:
+        await _register_resource()
     else:
-        _LOGGER.debug(
-            "Frontend assets not found at %s; the bundled card will not be available",
-            FRONTEND_DIR,
-        )
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_resource)
+
     return True
 
 

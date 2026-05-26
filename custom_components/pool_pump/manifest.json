@@ -1,12 +1,13 @@
 {
   "domain": "pool_pump",
   "name": "Pool Pump Manager",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "documentation": "https://github.com/Shad107/ha-pool_pump",
   "issue_tracker": "https://github.com/Shad107/ha-pool_pump/issues",
   "codeowners": ["@Shad107"],
   "config_flow": true,
   "dependencies": ["sun", "frontend", "http"],
+  "after_dependencies": ["lovelace"],
   "integration_type": "service",
   "iot_class": "calculated",
   "requirements": []

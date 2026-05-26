@@ -5,7 +5,13 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.3.4"
+VERSION = "0.3.5"
+INTEGRATION_VERSION = VERSION
+
+URL_BASE = "/pool_pump_card_assets"
+JSMODULES = [
+    {"name": "Pool Pump Card", "filename": "pool-pump-card.js", "version": VERSION},
+]
 
 ISSUE_URL = "https://github.com/Shad107/ha-pool_pump/issues"
 
