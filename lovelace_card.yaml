@@ -1,0 +1,96 @@
+# Pool Pump Manager — dashboard card template
+#
+# Paste this into a Manual card. Replace XXX in the entity IDs with the
+# integration's slug if HA renamed it (default device name is
+# "pool_pump_manager"). Pump and electrolyzer switches are the entities
+# you configured at install time — replace switch.prise_pompe_piscine and
+# switch.prise_electrolyseur_piscine accordingly.
+
+type: vertical-stack
+cards:
+  - type: heading
+    heading: Piscine
+    icon: mdi:pool
+
+  - type: tile
+    entity: select.pool_pump_manager_mode
+    name: Mode
+    color: blue
+    tap_action:
+      action: more-info
+
+  - type: entities
+    title: Aujourd'hui
+    show_header_toggle: false
+    entities:
+      - entity: sensor.pool_pump_manager_pump_start_time
+        name: Début prévu
+        icon: mdi:clock-start
+      - entity: sensor.pool_pump_manager_pump_end_time
+        name: Fin prévue
+        icon: mdi:clock-end
+      - entity: sensor.pool_pump_manager_pump_daily_duration
+        name: Durée totale
+        icon: mdi:timer-sand
+      - entity: sensor.pool_pump_manager_temperature_used
+        name: Température utilisée
+      - entity: sensor.pool_pump_manager_status
+        name: État
+
+  - type: glance
+    title: État physique
+    show_state: true
+    columns: 2
+    entities:
+      - entity: switch.prise_pompe_piscine
+        name: Pompe
+      - entity: switch.prise_electrolyseur_piscine
+        name: Électrolyseur
+
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.pool_pump_manager_heatwave_override
+        state: "on"
+    card:
+      type: markdown
+      content: |
+        ⚠️ **Mode canicule actif** — filtration forcée à durée maximale.
+
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Forcer marche
+        icon: mdi:play
+        tap_action:
+          action: call-service
+          service: select.select_option
+          target:
+            entity_id: select.pool_pump_manager_mode
+          data:
+            option: "on"
+      - type: button
+        name: Auto
+        icon: mdi:autorenew
+        tap_action:
+          action: call-service
+          service: select.select_option
+          target:
+            entity_id: select.pool_pump_manager_mode
+          data:
+            option: "auto"
+      - type: button
+        name: Forcer arrêt
+        icon: mdi:stop
+        tap_action:
+          action: call-service
+          service: select.select_option
+          target:
+            entity_id: select.pool_pump_manager_mode
+          data:
+            option: "off"
+      - type: button
+        name: Refresh
+        icon: mdi:refresh
+        tap_action:
+          action: call-service
+          service: pool_pump.refresh
