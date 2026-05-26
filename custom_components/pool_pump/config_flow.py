@@ -33,6 +33,7 @@ from .const import (
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
+    CONF_POOL_IMAGE_URL,
     CONF_POOL_PRESET,
     CONF_PUMP_POWER_SENSOR,
     CONF_PUMP_SHORT_CYCLE_THRESHOLD,
@@ -319,6 +320,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=300, step=5, mode=NumberSelectorMode.BOX)
             ),
+            vol.Optional(
+                CONF_POOL_IMAGE_URL,
+                description={"suggested_value": current.get(CONF_POOL_IMAGE_URL)},
+            ): str,
         }
     )
     return vol.Schema(schema)

@@ -185,6 +185,8 @@ class PoolGeometrySensor(PoolPumpEntity, SensorEntity):
             "depth_m": preset.get("depth_m"),
             "manufacturer": preset.get("manufacturer"),
             "svg": d.pool_svg or "",
+            "image_url": d.pool_image_url,
+            "bundled_url": d.pool_bundled_url,
         }
 
 

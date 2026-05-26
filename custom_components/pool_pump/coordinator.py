@@ -48,6 +48,7 @@ from .const import (
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
+    CONF_POOL_IMAGE_URL,
     CONF_POOL_PRESET,
     CONF_PUMP_POWER_SENSOR,
     CONF_PUMP_SHORT_CYCLE_THRESHOLD,
@@ -143,6 +144,8 @@ class PoolPumpData:
     heatwave_active: bool = False
     pool_preset: dict | None = None
     pool_svg: str = ""
+    pool_image_url: str | None = None
+    pool_bundled_url: str | None = None
     pump_available: bool = True
     electrolyzer_available: bool = True
     air_temperature_smoothed: float | None = None
@@ -662,6 +665,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 temperature=data.temperature_used,
                 duration_hours=data.duration_hours,
             )
+
+        # Image URLs for the card to choose from (priority: user > bundled > inline SVG)
+        user_url = self.options.get(CONF_POOL_IMAGE_URL)
+        if user_url:
+            data.pool_image_url = user_url
+        if preset is not None and preset.get("shape") == "round":
+            data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.svg"
 
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:

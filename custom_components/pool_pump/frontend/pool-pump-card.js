@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.9.6";
+const CARD_VERSION = "0.9.7";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -155,6 +155,7 @@ class PoolPumpCard extends HTMLElement {
     }
 
     const svg = pool.attributes.svg || "";
+    const imageUrl = pool.attributes.image_url || pool.attributes.bundled_url || null;
     const title = c.title ?? pool.state ?? "Pool";
     const modeState = mode ? mode.state : "auto";
 
@@ -168,7 +169,9 @@ class PoolPumpCard extends HTMLElement {
         </div>
 
         <div class="visual ${pumpTarget && pumpTarget.state === "on" ? "running" : ""}">
-          ${svg || `<div class="no-svg">No preset selected — pick a pool model in the integration options to enable the visual.</div>`}
+          ${imageUrl
+            ? `<img class="pool-img" src="${imageUrl}" alt="Pool" />`
+            : (svg || `<div class="no-svg">No preset selected — pick a pool model in the integration options to enable the visual.</div>`)}
         </div>
 
         <div class="schedule">
@@ -363,10 +366,15 @@ const STYLES = `
     background: var(--secondary-background-color);
     padding: 8px;
   }
-  .visual svg {
+  .visual svg, .visual .pool-img {
     display: block;
     width: 100%;
     height: auto;
+    border-radius: 8px;
+  }
+  .visual.running .pool-img {
+    animation: gentle-shimmer 4s ease-in-out infinite;
+    transform-origin: center;
   }
   /* Animate only the water shape — earlier rect[fill^="url"] was too
      broad and made the wooden deck pulse too. The new SVG always tags
