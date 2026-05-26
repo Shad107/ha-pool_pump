@@ -263,17 +263,20 @@ def render_pool_svg(
 
     L, W, D = _pool_real_dims(preset)
 
-    # Compute scale so the projected pool fits in the inner canvas
+    # Compute scale so the projected pool fits in the inner canvas.
+    # Reserve a fixed margin on the right for the ladder when aboveground
+    # so the composition (pool + ladder) ends up visually centered.
+    ladder_reserve = 16 if aboveground else 0
     proj_w = L + 0.5 * W   # x-extent of the projected box
     proj_h = D + 0.4 * W   # y-extent
-    inner_w = width - 2 * pad_x
+    inner_w = width - 2 * pad_x - ladder_reserve
     inner_h = height - pad_top - pad_bot
     scale = min(inner_w / proj_w, inner_h / proj_h) * 0.92
 
-    # Center the projected pool in the canvas
+    # Center "pool + ladder reserve" in the canvas, then place the pool
+    # at the left of that combined region.
     proj_w_px = proj_w * scale
-    proj_h_px = proj_h * scale
-    origin_x = (width - proj_w_px) / 2 + 0.5 * W * scale  # back-top-left has x = +0.5W·scale
+    origin_x = (width - proj_w_px - ladder_reserve) / 2 + 0.5 * W * scale
     origin_y = pad_top + 0.4 * W * scale
 
     def P(x, y, z):
@@ -302,17 +305,20 @@ def render_pool_svg(
             f'<ellipse class="pool-water" cx="{cx_top:.1f}" cy="{cy_top:.1f}" '
             f'rx="{rx_top:.1f}" ry="{ry_top:.1f}" fill="url(#water)" />'
         )
-        # Front-curved wall: ellipse arc going from the front-bottom edge of the surface to the floor
-        front_y = cy_top + ry_top
-        floor_y = front_y + D * scale
-        # Cylinder side: draw a path from (cx-rx, front_y) down to (cx-rx, floor_y) arc to (cx+rx, floor_y) up to (cx+rx, front_y)
-        # Use an arc for the bottom curve too
+        # Cylinder side wall — visible front half of the cylinder seen
+        # from above-front. Path starts at the EQUATOR of the top ellipse
+        # (left extreme at y = cy_top), arcs DOWN via the front (sweep=1
+        # = clockwise in screen y-down = passes through BOTTOM of the
+        # ellipse = FRONT of the cylinder in 3/4 view), goes straight
+        # down to the floor ellipse, arcs BACK via its front too, then
+        # closes with a straight line up.
+        floor_y = cy_top + D * scale
         side_wall = (
-            f'<path d="M {cx_top-rx_top:.1f} {front_y:.1f} '
-            f'L {cx_top-rx_top:.1f} {floor_y:.1f} '
-            f'A {rx_top:.1f} {ry_top:.1f} 0 0 0 {cx_top+rx_top:.1f} {floor_y:.1f} '
-            f'L {cx_top+rx_top:.1f} {front_y:.1f} '
-            f'A {rx_top:.1f} {ry_top:.1f} 0 0 1 {cx_top-rx_top:.1f} {front_y:.1f} Z" '
+            f'<path d="M {cx_top-rx_top:.1f} {cy_top:.1f} '
+            f'A {rx_top:.1f} {ry_top:.1f} 0 0 1 {cx_top+rx_top:.1f} {cy_top:.1f} '
+            f'L {cx_top+rx_top:.1f} {floor_y:.1f} '
+            f'A {rx_top:.1f} {ry_top:.1f} 0 0 1 {cx_top-rx_top:.1f} {floor_y:.1f} '
+            f'Z" '
             f'fill="url(#wall_grad)" />'
         )
         coping_shape = (
