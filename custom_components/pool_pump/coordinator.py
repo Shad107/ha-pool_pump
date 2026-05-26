@@ -48,6 +48,10 @@ from .const import (
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
     CONF_PUMP_SWITCH,
+    CONF_SMOOTHING_WINDOW_HOURS,
+    CONF_SOLAR_COEFFICIENT,
+    CONF_SOLAR_PEAK_SENSOR,
+    CONF_SOLAR_POWER_SENSOR,
     CONF_TAU_HOURS,
     CONF_TEMPERATURE_MODE,
     CONF_TEMPERATURE_OFFSET,
@@ -55,6 +59,8 @@ from .const import (
     CONF_WATER_LEVEL_CRITICAL,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
+    DEFAULT_SMOOTHING_WINDOW_HOURS,
+    DEFAULT_SOLAR_COEFFICIENT,
     DEFAULT_TAU_HOURS,
     DEFAULT_TEMPERATURE_MODE,
     DEFAULT_TEMPERATURE_OFFSET,
@@ -119,6 +125,10 @@ class PoolPumpData:
     pool_svg: str = ""
     pump_available: bool = True
     electrolyzer_available: bool = True
+    air_temperature_smoothed: float | None = None
+    solar_power_w: float | None = None
+    solar_peak_w: float | None = None
+    solar_fraction: float = 0.0
 
 
 def compute_duration(
@@ -170,11 +180,22 @@ def update_thermal_model(
     offset: float,
     tau_hours: float,
     dt_seconds: float,
+    solar_fraction: float = 0.0,
+    solar_coefficient: float = 0.0,
 ) -> float:
-    """First-order RC model: dT_w/dt = (T_air + offset - T_w) / tau.
+    """First-order RC model with optional solar gain term.
 
-    Discretized as T_w[n+1] = T_w[n] + alpha * (T_target - T_w[n]) with
-    alpha = 1 - exp(-dt/tau) for numerical stability across long gaps.
+        dT_w/dt = (T_air + offset - T_w) / tau   +   k_sun * solar_fraction
+
+    Discretized over dt_seconds:
+        T_w[n+1] = T_w[n] + alpha * (T_target - T_w[n]) + k * solar_fraction * dt/3600
+    with alpha = 1 - exp(-dt/tau) for numerical stability across long gaps.
+
+    `solar_fraction` ∈ [0, 1] is current solar input normalized to peak
+    (typically `P_solar / P_peak`). `solar_coefficient` is the °C/hour
+    heating rate at full sun (k_sun); when zero, the solar term is
+    disabled.
+
     If no prior state is known, the model bootstraps at T_air + offset.
     """
     from math import exp
@@ -185,7 +206,25 @@ def update_thermal_model(
 
     tau_seconds = tau_hours * 3600.0
     alpha = 1.0 - exp(-dt_seconds / tau_seconds)
-    return current_water + alpha * (target - current_water)
+    new = current_water + alpha * (target - current_water)
+
+    if solar_coefficient > 0 and solar_fraction > 0:
+        new += solar_coefficient * solar_fraction * (dt_seconds / 3600.0)
+
+    return new
+
+
+def rolling_mean(samples: list[tuple[datetime, float]], window: timedelta) -> float | None:
+    """Mean of samples within `window` before the latest sample.
+
+    `samples` is a list of (timestamp, value) tuples, sorted oldest-first.
+    Returns None if no sample is in-window.
+    """
+    if not samples:
+        return None
+    cutoff = samples[-1][0] - window
+    kept = [v for (t, v) in samples if t >= cutoff]
+    return sum(kept) / len(kept) if kept else None
 
 
 def _read_float(hass: HomeAssistant, entity_id: str | None) -> float | None:
@@ -242,9 +281,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         )
         # Tracks the last availability seen, so we can log on transition only.
         self._availability_state: dict[str, bool] = {}
+        # Rolling buffer of (timestamp, air_temp) samples for the smoothing
+        # window. Capped at ~3000 entries (≈50h of minutely ticks).
+        self._air_samples: list[tuple[datetime, float]] = []
+        self._max_samples: int = 3000
 
     async def async_load_persisted(self) -> None:
-        """Load the modeled water temp from disk (called once after init)."""
+        """Load the modeled water temp + air samples from disk (once at init)."""
         stored = await self._store.async_load()
         if not stored:
             return
@@ -255,6 +298,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._last_model_update = datetime.fromisoformat(last)
             except ValueError:
                 self._last_model_update = None
+        # Restore air sample history so the rolling mean is warm after restart
+        for entry in stored.get("air_samples", []) or []:
+            try:
+                ts = datetime.fromisoformat(entry["t"])
+                self._air_samples.append((ts, float(entry["v"])))
+            except (KeyError, ValueError, TypeError):
+                continue
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -265,6 +315,10 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     if self._last_model_update
                     else None
                 ),
+                "air_samples": [
+                    {"t": t.isoformat(), "v": v}
+                    for (t, v) in self._air_samples[-self._max_samples:]
+                ],
             }
         )
 
@@ -317,8 +371,52 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         raw_temp = _read_float(self.hass, temp_id)
         data.forecast_value = _read_float(self.hass, forecast_id)
 
+        # Solar coupling — read both sensors (best-effort) regardless of temp
+        # mode so the user can see the values in the state attributes.
+        solar_power = _read_float(
+            self.hass, self.options.get(CONF_SOLAR_POWER_SENSOR)
+        )
+        solar_peak = _read_float(
+            self.hass, self.options.get(CONF_SOLAR_PEAK_SENSOR)
+        )
+        if solar_power is not None and solar_peak and solar_peak > 0:
+            data.solar_fraction = max(0.0, min(1.0, solar_power / solar_peak))
+        data.solar_power_w = solar_power
+        data.solar_peak_w = solar_peak
+
+        smoothing_h = float(
+            self.options.get(
+                CONF_SMOOTHING_WINDOW_HOURS, DEFAULT_SMOOTHING_WINDOW_HOURS
+            )
+        )
+        k_sun = float(
+            self.options.get(CONF_SOLAR_COEFFICIENT, DEFAULT_SOLAR_COEFFICIENT)
+            if self.options.get(CONF_SOLAR_POWER_SENSOR)
+            else 0.0
+        )
+
         if temp_mode == TEMP_MODE_AIR_MODEL and raw_temp is not None:
             data.air_temperature_raw = raw_temp
+
+            # Append to rolling buffer and prune.
+            self._air_samples.append((now, raw_temp))
+            cutoff = now - timedelta(hours=smoothing_h)
+            self._air_samples = [s for s in self._air_samples if s[0] >= cutoff]
+            if len(self._air_samples) > self._max_samples:
+                self._air_samples = self._air_samples[-self._max_samples:]
+
+            air_smoothed = rolling_mean(
+                self._air_samples, timedelta(hours=smoothing_h)
+            )
+            # If the buffer just started (<5min of history), the smoothed
+            # value would be nearly equal to the current reading. That
+            # collapses to the v0.4 behaviour ("T_eau = T_air"). Detect
+            # this and fall back to the raw reading until we have enough
+            # samples to make a useful average.
+            if air_smoothed is None:
+                air_smoothed = raw_temp
+            data.air_temperature_smoothed = air_smoothed
+
             dt_seconds = (
                 (now - self._last_model_update).total_seconds()
                 if self._last_model_update
@@ -326,10 +424,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             )
             self._water_modeled = update_thermal_model(
                 self._water_modeled,
-                raw_temp,
+                air_smoothed,
                 offset=offset,
                 tau_hours=tau_hours,
                 dt_seconds=dt_seconds,
+                solar_fraction=data.solar_fraction,
+                solar_coefficient=k_sun,
             )
             self._last_model_update = now
             await self._async_save_model()

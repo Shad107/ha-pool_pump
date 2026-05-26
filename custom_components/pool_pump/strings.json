@@ -29,7 +29,11 @@
           "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
           "electrolyzer_min_temp": "Electrolyzer min water temp (°C; cell off below)",
           "electrolyzer_max_temp": "Electrolyzer max water temp (°C; cell off above)",
-          "water_level_critical": "Low-water binary sensor (optional; pump stays off when on)"
+          "water_level_critical": "Low-water binary sensor (optional; pump stays off when on)",
+          "smoothing_window_hours": "Air temperature smoothing window (hours, default 24)",
+          "solar_power_sensor": "Instantaneous solar power sensor (W, optional)",
+          "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
+          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)"
         }
       }
     },
@@ -57,7 +61,11 @@
           "electrolyzer_pre_stop_delay": "Electrolyzer OFF lead time before pump stop (s)",
           "electrolyzer_min_temp": "Electrolyzer min water temp (°C)",
           "electrolyzer_max_temp": "Electrolyzer max water temp (°C)",
-          "water_level_critical": "Low-water binary sensor (optional)"
+          "water_level_critical": "Low-water binary sensor (optional)",
+          "smoothing_window_hours": "Air temperature smoothing window (hours, default 24)",
+          "solar_power_sensor": "Instantaneous solar power sensor (W, optional)",
+          "solar_peak_sensor": "Today's peak solar power sensor (W, optional, for normalisation)",
+          "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)"
         }
       }
     }
@@ -82,17 +90,35 @@
       }
     },
     "sensor": {
-      "start_time": {"name": "Pump start time"},
-      "end_time": {"name": "Pump end time"},
-      "duration": {"name": "Pump daily duration"},
-      "temperature_used": {"name": "Temperature used"},
-      "status": {"name": "Status"},
-      "pool": {"name": "Pool"}
+      "start_time": {
+        "name": "Pump start time"
+      },
+      "end_time": {
+        "name": "Pump end time"
+      },
+      "duration": {
+        "name": "Pump daily duration"
+      },
+      "temperature_used": {
+        "name": "Temperature used"
+      },
+      "status": {
+        "name": "Status"
+      },
+      "pool": {
+        "name": "Pool"
+      }
     },
     "binary_sensor": {
-      "pump_target": {"name": "Pump should be on"},
-      "electrolyzer_target": {"name": "Electrolyzer should be on"},
-      "heatwave": {"name": "Heatwave override"}
+      "pump_target": {
+        "name": "Pump should be on"
+      },
+      "electrolyzer_target": {
+        "name": "Electrolyzer should be on"
+      },
+      "heatwave": {
+        "name": "Heatwave override"
+      }
     }
   }
 }

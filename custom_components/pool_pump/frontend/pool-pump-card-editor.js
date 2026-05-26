@@ -1,77 +1,47 @@
 /**
- * Visual editor for Pool Pump Card.
+ * Visual editor for Pool Pump Card — minimal.
  *
- * Renders ha-form (HA's built-in dynamic form) bound to the card config
- * schema. Picks the right entities by domain and filters by integration.
+ * v0.5 only exposes a "title" override field. Every other config option
+ * (pool_entity, mode_entity, pump_switch, electrolyzer_switch) is
+ * auto-prefilled by the card's getStubConfig from the integration's
+ * config entry, with prefix-based auto-detection as a second fallback.
+ * Power users can still set advanced fields via the YAML code editor.
  */
 
 const LABELS = {
-  title: "Titre (optionnel)",
-  pool_entity: "Capteur de la piscine (sensor)",
-  mode_entity: "Sélecteur de mode (select)",
-  pump_switch: "Switch pompe (optionnel)",
-  electrolyzer_switch: "Switch électrolyseur (optionnel)",
+  title: "Titre (optionnel) — laisse vide pour utiliser le nom du modèle",
 };
 
 const SCHEMA = [
   { name: "title", selector: { text: {} } },
-  {
-    name: "pool_entity",
-    required: true,
-    selector: {
-      entity: { domain: "sensor", filter: { integration: "pool_pump" } },
-    },
-  },
-  {
-    name: "mode_entity",
-    selector: {
-      entity: { domain: "select", filter: { integration: "pool_pump" } },
-    },
-  },
-  {
-    name: "pump_switch",
-    selector: { entity: { domain: "switch" } },
-  },
-  {
-    name: "electrolyzer_switch",
-    selector: { entity: { domain: "switch" } },
-  },
 ];
 
-function computeLabel(schema) {
-  // ha-form's computeLabel passes the FULL schema entry (an object),
-  // not a string. We need to pull schema.name; the previous version
-  // treated it as a string and produced "[object Object]" labels.
-  if (!schema || typeof schema !== "object") return String(schema ?? "");
-  return LABELS[schema.name] || schema.name;
+function computeLabel(arg) {
+  if (typeof arg === "string") return LABELS[arg] || arg;
+  if (arg && typeof arg === "object") {
+    const name = arg.name || (arg.schema && arg.schema.name);
+    if (typeof name === "string") return LABELS[name] || name;
+  }
+  return "";
 }
 
 
 class PoolPumpCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = { ...(config || {}) };
-    if (this._form) {
-      this._form.data = this._config;
-    } else {
-      this._tryRender();
-    }
+    if (this._form) this._form.data = this._config;
+    else this._tryRender();
   }
 
   set hass(hass) {
     this._hass = hass;
-    if (this._form) {
-      this._form.hass = hass;
-    } else {
-      this._tryRender();
-    }
+    if (this._form) this._form.hass = hass;
+    else this._tryRender();
   }
 
   _tryRender() {
     if (this._rendered || !this._hass || !this._config) return;
-
-    if (!this.shadowRoot) {
-      this.attachShadow({ mode: "open" });
-    }
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
 
     this._form = document.createElement("ha-form");
     this._form.hass = this._hass;
@@ -81,6 +51,10 @@ class PoolPumpCardEditor extends HTMLElement {
     this._form.addEventListener("value-changed", (e) => this._onChange(e));
 
     this.shadowRoot.innerHTML = "";
+    const help = document.createElement("div");
+    help.style.cssText = "padding: 0 8px 12px; font-size: 12px; color: var(--secondary-text-color);";
+    help.innerHTML = "ℹ️ Toute la config est auto-déduite de l'intégration. Le titre est optionnel. Pour des overrides avancés, utilise le bouton « SHOW CODE EDITOR » en haut.";
+    this.shadowRoot.appendChild(help);
     this.shadowRoot.appendChild(this._form);
     this._rendered = true;
   }
@@ -88,7 +62,6 @@ class PoolPumpCardEditor extends HTMLElement {
   _onChange(e) {
     if (!this._config) return;
     const next = e.detail.value;
-    // Skip no-op value-changed events to prevent re-render loops.
     if (JSON.stringify(next) === JSON.stringify(this._config)) return;
     this._config = next;
     this.dispatchEvent(

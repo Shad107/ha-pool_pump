@@ -33,6 +33,10 @@ from .const import (
     CONF_POOL_HAS_COVER,
     CONF_POOL_PRESET,
     CONF_PUMP_SWITCH,
+    CONF_SMOOTHING_WINDOW_HOURS,
+    CONF_SOLAR_COEFFICIENT,
+    CONF_SOLAR_PEAK_SENSOR,
+    CONF_SOLAR_POWER_SENSOR,
     CONF_TAU_HOURS,
     CONF_TEMPERATURE_MODE,
     CONF_TEMPERATURE_OFFSET,
@@ -47,6 +51,8 @@ from .const import (
     DEFAULT_MAX_HOURS,
     DEFAULT_MIN_HOURS,
     DEFAULT_PIVOT_HOUR,
+    DEFAULT_SMOOTHING_WINDOW_HOURS,
+    DEFAULT_SOLAR_COEFFICIENT,
     DEFAULT_TAU_HOURS,
     DEFAULT_TEMPERATURE_MODE,
     DEFAULT_TEMPERATURE_OFFSET,
@@ -143,6 +149,42 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
             )
         ] = NumberSelector(
             NumberSelectorConfig(min=-10, max=10, step=0.5, mode=NumberSelectorMode.BOX)
+        )
+        schema[
+            vol.Optional(
+                CONF_SMOOTHING_WINDOW_HOURS,
+                default=current.get(
+                    CONF_SMOOTHING_WINDOW_HOURS, DEFAULT_SMOOTHING_WINDOW_HOURS
+                ),
+            )
+        ] = NumberSelector(
+            NumberSelectorConfig(min=1, max=168, step=1, mode=NumberSelectorMode.BOX)
+        )
+        schema[
+            vol.Optional(
+                CONF_SOLAR_POWER_SENSOR,
+                description={"suggested_value": current.get(CONF_SOLAR_POWER_SENSOR)},
+            )
+        ] = EntitySelector(
+            EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+        schema[
+            vol.Optional(
+                CONF_SOLAR_PEAK_SENSOR,
+                description={"suggested_value": current.get(CONF_SOLAR_PEAK_SENSOR)},
+            )
+        ] = EntitySelector(
+            EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+        schema[
+            vol.Optional(
+                CONF_SOLAR_COEFFICIENT,
+                default=current.get(
+                    CONF_SOLAR_COEFFICIENT, DEFAULT_SOLAR_COEFFICIENT
+                ),
+            )
+        ] = NumberSelector(
+            NumberSelectorConfig(min=0, max=3, step=0.1, mode=NumberSelectorMode.BOX)
         )
 
     schema.update(

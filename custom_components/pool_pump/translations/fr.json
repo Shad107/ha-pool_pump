@@ -29,7 +29,11 @@
           "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
           "electrolyzer_min_temp": "T° eau min électrolyseur (°C ; cellule OFF sous)",
           "electrolyzer_max_temp": "T° eau max électrolyseur (°C ; cellule OFF au-delà)",
-          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel ; bloque la pompe si ON)"
+          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel ; bloque la pompe si ON)",
+          "smoothing_window_hours": "Fenêtre de lissage T° air (heures, défaut 24)",
+          "solar_power_sensor": "Capteur puissance solaire instantanée (W, optionnel)",
+          "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
+          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)"
         }
       }
     },
@@ -57,7 +61,11 @@
           "electrolyzer_pre_stop_delay": "Anticipation OFF électrolyseur avant arrêt pompe (s)",
           "electrolyzer_min_temp": "T° eau min électrolyseur (°C)",
           "electrolyzer_max_temp": "T° eau max électrolyseur (°C)",
-          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel)"
+          "water_level_critical": "Capteur binaire niveau d'eau critique (optionnel)",
+          "smoothing_window_hours": "Fenêtre de lissage T° air (heures, défaut 24)",
+          "solar_power_sensor": "Capteur puissance solaire instantanée (W, optionnel)",
+          "solar_peak_sensor": "Capteur peak solaire du jour (W, optionnel pour normaliser)",
+          "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)"
         }
       }
     }
@@ -82,17 +90,35 @@
       }
     },
     "sensor": {
-      "start_time": {"name": "Heure de début"},
-      "end_time": {"name": "Heure de fin"},
-      "duration": {"name": "Durée journalière"},
-      "temperature_used": {"name": "Température utilisée"},
-      "status": {"name": "Statut"},
-      "pool": {"name": "Piscine"}
+      "start_time": {
+        "name": "Heure de début"
+      },
+      "end_time": {
+        "name": "Heure de fin"
+      },
+      "duration": {
+        "name": "Durée journalière"
+      },
+      "temperature_used": {
+        "name": "Température utilisée"
+      },
+      "status": {
+        "name": "Statut"
+      },
+      "pool": {
+        "name": "Piscine"
+      }
     },
     "binary_sensor": {
-      "pump_target": {"name": "Pompe doit tourner"},
-      "electrolyzer_target": {"name": "Électrolyseur doit tourner"},
-      "heatwave": {"name": "Mode canicule"}
+      "pump_target": {
+        "name": "Pompe doit tourner"
+      },
+      "electrolyzer_target": {
+        "name": "Électrolyseur doit tourner"
+      },
+      "heatwave": {
+        "name": "Mode canicule"
+      }
     }
   }
 }

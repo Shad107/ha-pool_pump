@@ -122,6 +122,11 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "temperature_mode": d.temperature_mode,
             "pump_available": d.pump_available,
             "electrolyzer_available": d.electrolyzer_available,
+            "air_temperature_raw": d.air_temperature_raw,
+            "air_temperature_smoothed": d.air_temperature_smoothed,
+            "solar_power_w": d.solar_power_w,
+            "solar_peak_w": d.solar_peak_w,
+            "solar_fraction": round(d.solar_fraction, 3) if d.solar_fraction else 0,
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs
