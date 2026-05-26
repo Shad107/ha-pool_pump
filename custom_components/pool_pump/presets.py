@@ -216,18 +216,34 @@ def render_pool_svg(
     depth = preset.get("depth_m")
     mfr = preset.get("manufacturer", "")
     aboveground = mfr in ("Intex", "Bestway")
+    slug = preset.get("slug", "")
 
-    # Wall colors per type:
-    # - aboveground (Intex/Bestway): navy + charcoal — matches real product
-    #   colors and contrasts sharply with the grass background
-    # - inground (Generic): a stone/concrete coping band, no visible wall
-    if aboveground:
+    # Frame style derived from slug/manufacturer — drives the look:
+    #   inflatable_ring: Intex Easy Set — blue donut on the rim, vinyl wall
+    #   metal_frame:     Intex Frame/Prism/Ultra XTR + Bestway Steel/Power/Hydrium
+    #                    — silver top rail + visible vertical posts
+    #   stone_coping:    in-ground — stone rim, no aboveground wall
+    if "easy_set" in slug:
+        frame_style = "inflatable_ring"
+    elif aboveground:
+        frame_style = "metal_frame"
+    else:
+        frame_style = "stone_coping"
+
+    # Wall colors per frame style:
+    # - inflatable_ring (Easy Set): vinyl bleu marine
+    # - metal_frame (Frame / Ultra XTR / Steel Pro / Power Steel): vinyl
+    #   navy + montants silver
+    # - stone_coping (in-ground): pierre crème
+    if frame_style == "inflatable_ring":
+        wall_top = "#1A4A7A"
+        wall_bot = "#0B2748"
+        wall_side_bot = "#061730"
+    elif frame_style == "metal_frame":
         wall_top = "#1F2E4A"
         wall_bot = "#0B1424"
         wall_side_bot = "#050B16"
     else:
-        # Same color as the coping — looks like a stone rim around an
-        # in-ground pool, no real "wall" visible from above.
         wall_top = "#D8D2C2"
         wall_bot = "#9A937F"
         wall_side_bot = "#7A7466"
@@ -392,6 +408,100 @@ def render_pool_svg(
         f'fill="#FFFFFF" opacity="0.35" transform="rotate(-12 {glint_cx:.1f} {glint_cy:.1f})" />'
     )
 
+    # Product-specific frame overlay
+    frame_overlay = ""
+    if frame_style == "inflatable_ring":
+        # Intex Easy Set: blue inflated tube around the rim. Drawn as a
+        # thick rounded outline ABOVE the coping, with a lighter highlight
+        # on top to suggest the tube's roundness.
+        if shape == "round" or shape == "oval":
+            ring_rx = (bbox[2] - bbox[0]) / 2
+            ring_ry = (bbox[3] - bbox[1]) / 2
+            ring_cx = (bbox[0] + bbox[2]) / 2
+            ring_cy = (bbox[1] + bbox[3]) / 2
+            frame_overlay = (
+                f'<ellipse cx="{ring_cx:.1f}" cy="{ring_cy:.1f}" '
+                f'rx="{ring_rx+4:.1f}" ry="{ring_ry+2:.1f}" '
+                f'fill="none" stroke="#1E5AA6" stroke-width="5" stroke-linecap="round" />'
+                f'<ellipse cx="{ring_cx:.1f}" cy="{ring_cy:.1f}" '
+                f'rx="{ring_rx+4:.1f}" ry="{ring_ry+2:.1f}" '
+                f'fill="none" stroke="#7AB3E0" stroke-width="1.5" stroke-dasharray="20 80" stroke-linecap="round" />'
+            )
+        else:
+            # rectangular Easy Set is rare but we still handle it
+            frame_overlay = (
+                f'<polygon points="'
+                f'{BTL[0]-3:.1f},{BTL[1]-2:.1f} '
+                f'{BTR[0]+3:.1f},{BTR[1]-2:.1f} '
+                f'{FTR[0]+3:.1f},{FTR[1]+2:.1f} '
+                f'{FTL[0]-3:.1f},{FTL[1]+2:.1f}" '
+                f'fill="none" stroke="#1E5AA6" stroke-width="5" stroke-linejoin="round" />'
+            )
+    elif frame_style == "metal_frame":
+        # Silver top rail + vertical posts at corners + middle of long sides.
+        # The rail sits ON the coping; posts go from the rail to the floor.
+        post_color = "#C8CDD3"
+        post_stroke = "#7A8088"
+        rail_color = "#D9DCE0"
+        if shape == "round" or shape == "oval":
+            ring_rx = (bbox[2] - bbox[0]) / 2
+            ring_ry = (bbox[3] - bbox[1]) / 2
+            ring_cx = (bbox[0] + bbox[2]) / 2
+            ring_cy = (bbox[1] + bbox[3]) / 2
+            # Top rail = a slightly thicker ellipse stroke outside the coping
+            frame_overlay = (
+                f'<ellipse cx="{ring_cx:.1f}" cy="{ring_cy:.1f}" '
+                f'rx="{ring_rx+2:.1f}" ry="{ring_ry+1:.1f}" '
+                f'fill="none" stroke="{rail_color}" stroke-width="2.5" />'
+            )
+            # 4 visible vertical posts (front, left, right, and the back is hidden)
+            floor_y = ring_cy + ring_ry + D * scale
+            for fx in (-0.95, -0.5, 0.4, 0.85):
+                post_top_x = ring_cx + ring_rx * fx
+                # approximate y on the ellipse at this x
+                # (x/rx)² + (y/ry)² = 1 → y = ry × √(1 - (x/rx)²)
+                from math import sqrt
+                t = (fx) ** 2
+                if t >= 1:
+                    continue
+                post_top_y = ring_cy + ring_ry * sqrt(1 - t)
+                post_bot_y = post_top_y + D * scale
+                frame_overlay += (
+                    f'<line x1="{post_top_x:.1f}" y1="{post_top_y:.1f}" '
+                    f'x2="{post_top_x:.1f}" y2="{post_bot_y:.1f}" '
+                    f'stroke="{post_color}" stroke-width="2.2" stroke-linecap="round" />'
+                )
+        else:
+            # Rectangular frame: rail along the top edges + 4 corner posts
+            # + middle posts on long sides
+            frame_overlay = (
+                f'<polyline points="'
+                f'{BTL[0]:.1f},{BTL[1]:.1f} '
+                f'{BTR[0]:.1f},{BTR[1]:.1f} '
+                f'{FTR[0]:.1f},{FTR[1]:.1f} '
+                f'{FTL[0]:.1f},{FTL[1]:.1f} '
+                f'{BTL[0]:.1f},{BTL[1]:.1f}" '
+                f'fill="none" stroke="{rail_color}" stroke-width="2.5" stroke-linejoin="round" />'
+            )
+            # Corner posts (4 visible)
+            for top, bot in [(FTL, FBL), (FTR, FBR), (BTL, BBL)]:
+                frame_overlay += (
+                    f'<line x1="{top[0]:.1f}" y1="{top[1]:.1f}" '
+                    f'x2="{bot[0]:.1f}" y2="{bot[1]:.1f}" '
+                    f'stroke="{post_color}" stroke-width="2.4" stroke-linecap="round" />'
+                )
+            # Mid post on the long front edge for big pools
+            if L > 4:
+                mid_top_x = (FTL[0] + FTR[0]) / 2
+                mid_top_y = (FTL[1] + FTR[1]) / 2
+                mid_bot_x = (FBL[0] + FBR[0]) / 2
+                mid_bot_y = (FBL[1] + FBR[1]) / 2
+                frame_overlay += (
+                    f'<line x1="{mid_top_x:.1f}" y1="{mid_top_y:.1f}" '
+                    f'x2="{mid_bot_x:.1f}" y2="{mid_bot_y:.1f}" '
+                    f'stroke="{post_color}" stroke-width="2.4" stroke-linecap="round" />'
+                )
+
     # Aboveground ladder, drawn on the right side of the front wall going down
     ladder = ""
     if aboveground and shape != "round" and shape != "oval":
@@ -490,6 +600,9 @@ def render_pool_svg(
   <!-- Sun glint and ripples -->
   {glint}
   {ripples}
+
+  <!-- Product-specific frame overlay (top rail + posts, or inflatable ring) -->
+  {frame_overlay}
 
   <!-- Ladder for aboveground pools -->
   {ladder}
