@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.3.2";
+const CARD_VERSION = "0.3.3";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -437,11 +437,7 @@ if (!window.customCards.some((c) => c.type === "pool-pump-card")) {
     type: "pool-pump-card",
     name: "Pool Pump Card",
     description: "Visuel + contrôles pour ta piscine (Pool Pump Manager)",
-    // preview: false — HA's picker tries to instantiate a live preview
-    // when preview is true, but doesn't always pass `hass` to the element,
-    // which can lock the preview thumbnail in an infinite spinner. Static
-    // name+description is safer.
-    preview: false,
+    preview: true,
     documentationURL: "https://github.com/Shad107/ha-pool_pump",
   });
 }
