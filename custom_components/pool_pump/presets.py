@@ -217,13 +217,29 @@ def render_pool_svg(
     mfr = preset.get("manufacturer", "")
     aboveground = mfr in ("Intex", "Bestway")
 
+    # Wall colors per type:
+    # - aboveground (Intex/Bestway): navy + charcoal — matches real product
+    #   colors and contrasts sharply with the grass background
+    # - inground (Generic): a stone/concrete coping band, no visible wall
+    if aboveground:
+        wall_top = "#1F2E4A"
+        wall_bot = "#0B1424"
+        wall_side_bot = "#050B16"
+    else:
+        # Same color as the coping — looks like a stone rim around an
+        # in-ground pool, no real "wall" visible from above.
+        wall_top = "#D8D2C2"
+        wall_bot = "#9A937F"
+        wall_side_bot = "#7A7466"
+
     palette = {
-        "idle":        {"top": "#7BC1E5", "mid": "#2F95C8", "bot": "#0F4A78", "tile": "#3a8fc5", "highlight": "#FFFFFFAA", "wall_top": "#E2D6BD", "wall_bot": "#9A8268"},
-        "running":     {"top": "#5FB5E5", "mid": "#1F90D6", "bot": "#0A4B7A", "tile": "#1F84BD", "highlight": "#FFFFFFDD", "wall_top": "#E2D6BD", "wall_bot": "#9A8268"},
-        "forced_off":  {"top": "#B0BCC4", "mid": "#7E8C95", "bot": "#4A555C", "tile": "#5d6970", "highlight": "#FFFFFF66", "wall_top": "#C8C8C8", "wall_bot": "#888"},
-        "unavailable": {"top": "#D4D7DA", "mid": "#9aa0a4", "bot": "#5C6268", "tile": "#7e858a", "highlight": "#FFFFFF55", "wall_top": "#C8C8C8", "wall_bot": "#888"},
+        "idle":        {"top": "#7BC1E5", "mid": "#2F95C8", "bot": "#0F4A78", "tile": "#3a8fc5", "highlight": "#FFFFFFAA"},
+        "running":     {"top": "#5FB5E5", "mid": "#1F90D6", "bot": "#0A4B7A", "tile": "#1F84BD", "highlight": "#FFFFFFDD"},
+        "forced_off":  {"top": "#B0BCC4", "mid": "#7E8C95", "bot": "#4A555C", "tile": "#5d6970", "highlight": "#FFFFFF66"},
+        "unavailable": {"top": "#D4D7DA", "mid": "#9aa0a4", "bot": "#5C6268", "tile": "#7e858a", "highlight": "#FFFFFF55"},
     }
     pal = palette.get(state, palette["idle"])
+    pal = {**pal, "wall_top": wall_top, "wall_bot": wall_bot, "wall_side_bot": wall_side_bot}
 
     pad_x = 22
     pad_top = 20
@@ -433,24 +449,31 @@ def render_pool_svg(
     </linearGradient>
     <linearGradient id="wall_grad_side" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%"  stop-color="{pal["wall_top"]}" />
-      <stop offset="100%" stop-color="#6E5840" />
+      <stop offset="100%" stop-color="{pal["wall_side_bot"]}" />
     </linearGradient>
-    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#EADFC7" />
-      <stop offset="100%" stop-color="#C9B48E" />
+    <linearGradient id="grass_grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#7FB85A" />
+      <stop offset="100%" stop-color="#4F8E3A" />
     </linearGradient>
-    <pattern id="planks" x="0" y="0" width="44" height="240" patternUnits="userSpaceOnUse">
-      <rect width="44" height="240" fill="url(#deck)" />
-      <line x1="44" y1="0" x2="44" y2="240" stroke="#A99270" stroke-opacity="0.35" stroke-width="0.6" />
-      <line x1="0" y1="0" x2="0" y2="240" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="0.5" />
+    <pattern id="grass" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="url(#grass_grad)" />
+      <line x1="3" y1="24" x2="3" y2="18" stroke="#9CC369" stroke-opacity="0.7" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="7" y1="24" x2="7" y2="20" stroke="#3E7A28" stroke-opacity="0.6" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="11" y1="24" x2="11" y2="17" stroke="#A6CD7B" stroke-opacity="0.65" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="15" y1="24" x2="15" y2="19" stroke="#5B9842" stroke-opacity="0.7" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="19" y1="24" x2="19" y2="20" stroke="#85B860" stroke-opacity="0.6" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="22" y1="24" x2="22" y2="18" stroke="#4A8633" stroke-opacity="0.65" stroke-width="0.6" stroke-linecap="round"/>
+      <line x1="1" y1="12" x2="1" y2="7" stroke="#6BAA4E" stroke-opacity="0.55" stroke-width="0.5" stroke-linecap="round"/>
+      <line x1="9" y1="11" x2="9" y2="6" stroke="#8FBD6B" stroke-opacity="0.55" stroke-width="0.5" stroke-linecap="round"/>
+      <line x1="17" y1="13" x2="17" y2="7" stroke="#4F8E3A" stroke-opacity="0.5" stroke-width="0.5" stroke-linecap="round"/>
     </pattern>
     <filter id="ladder_shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0.5" dy="1" stdDeviation="0.6" flood-opacity="0.35" />
     </filter>
   </defs>
 
-  <rect x="0" y="0" width="{width}" height="{height}" fill="url(#planks)" rx="12" ry="12" />
-  <rect x="0" y="0" width="{width}" height="{height}" fill="none" stroke="#A99270" stroke-opacity="0.3" stroke-width="1" rx="12" ry="12" />
+  <rect x="0" y="0" width="{width}" height="{height}" fill="url(#grass)" rx="12" ry="12" />
+  <rect x="0" y="0" width="{width}" height="{height}" fill="none" stroke="#3E7A28" stroke-opacity="0.45" stroke-width="1" rx="12" ry="12" />
 
   <!-- Visible side wall + front face (drawn first, behind the water rim) -->
   {side_wall}
@@ -476,5 +499,5 @@ def render_pool_svg(
   <text x="{width - pad_x - 32}" y="22" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="white" font-weight="700">{badge_text}</text>
 
   <!-- Compact bottom label -->
-  <text x="{width / 2:.1f}" y="{label_y}" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#7a6743" font-weight="500" opacity="0.85">{bottom_label}</text>
+  <text x="{width / 2:.1f}" y="{label_y}" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="white" stroke="#1f3d12" stroke-width="0.4" font-weight="600" opacity="0.95">{bottom_label}</text>
 </svg>'''
