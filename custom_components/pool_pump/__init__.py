@@ -2,17 +2,46 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .coordinator import PoolPumpCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR, Platform.SELECT, Platform.BINARY_SENSOR]
+
+FRONTEND_URL_BASE = "/pool_pump_card_assets"
+FRONTEND_DIR = Path(__file__).parent / "frontend"
+CARD_FILE = "pool-pump-card.js"
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """One-shot setup: register the bundled Lovelace card with the frontend.
+
+    Must run in async_setup (not async_setup_entry) so the static path and
+    extra JS URL are registered exactly once, regardless of how many
+    config entries the user creates.
+    """
+    if FRONTEND_DIR.is_dir() and (FRONTEND_DIR / CARD_FILE).exists():
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(FRONTEND_URL_BASE, str(FRONTEND_DIR), True)]
+        )
+        add_extra_js_url(hass, f"{FRONTEND_URL_BASE}/{CARD_FILE}?v={VERSION}")
+        _LOGGER.debug("Pool Pump Card registered at %s/%s", FRONTEND_URL_BASE, CARD_FILE)
+    else:
+        _LOGGER.debug(
+            "Frontend assets not found at %s; the bundled card will not be available",
+            FRONTEND_DIR,
+        )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

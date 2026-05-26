@@ -80,10 +80,14 @@ ships it as a modern HA component.
 4. Restart Home Assistant.
 5. *Settings → Devices & services → Add integration → Pool Pump Manager*.
 
+That's the only HACS step. The dashboard card ships with the integration
+(see "Dashboard card" below) — no separate HACS frontend install needed.
+
 ### Manual
 
-Copy `custom_components/pool_pump/` into your HA `config/custom_components/`
-directory. Restart Home Assistant. Then add via the UI as above.
+Copy `custom_components/pool_pump/` (including the `frontend/` subfolder)
+into your HA `config/custom_components/` directory. Restart Home Assistant.
+Then add via the UI as above.
 
 ## Configuration
 
@@ -140,12 +144,32 @@ A single service is exposed:
 
 ## Dashboard card
 
-A ready-to-paste Lovelace card template is included in
-[`lovelace_card.yaml`](./lovelace_card.yaml). It uses a markdown card to
-render the SVG attribute of `sensor.pool_pump_manager_pool` — the pool
-shows up at the correct shape and proportions, with the color shifting
-between idle (light blue), running (deep blue with ripple lines) and
-forced-off (grey).
+The integration **bundles a custom Lovelace card** and auto-registers it
+with the frontend at setup time — no separate HACS frontend install
+needed.
+
+After install + restart:
+
+1. Edit your dashboard → **Add Card** → **Pool Pump Card**
+2. The pool entity is auto-detected from your integration setup
+3. Click **Save**
+
+The card renders the SVG of your pool (right shape and proportions),
+schedule strip (start, end, duration, water temp, status), heatwave
+badge, and Auto/On/Off/Refresh action buttons. A subtle CSS shimmer
+animates the water when the pump is running.
+
+If you'd rather install the card as a separate HACS frontend plugin (or
+override the bundled version), there's also a standalone repo:
+[Shad107/pool-pump-card](https://github.com/Shad107/pool-pump-card).
+You don't need both — pick one. The bundled version is the simpler path
+for new installs; the standalone one is useful for development or for
+users who maintain their own Lovelace resources by hand.
+
+A YAML-only fallback card template is also available in
+[`lovelace_card.yaml`](./lovelace_card.yaml) for users who prefer pure
+built-in cards (markdown + entities + buttons). Not needed if you use
+the custom card above.
 
 ## Pool model catalog
 

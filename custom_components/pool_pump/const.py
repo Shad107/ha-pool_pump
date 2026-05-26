@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.2.1"
+VERSION = "0.3.0"
 
 ISSUE_URL = "https://github.com/Shad107/ha-pool_pump/issues"
 
