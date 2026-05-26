@@ -26,63 +26,63 @@ ShapeKind = Literal["round", "rect", "oval"]
 
 POOL_PRESETS: Final[list[dict]] = [
     # ---- Intex Easy Set (round, inflatable top ring) — 80% fill ----
-    {"slug": "intex_easy_set_244_61",  "name": "Intex Easy Set 244×61 cm",  "shape": "round", "volume_m3": 1.94,  "surface_m2": 4.67,  "depth_m": 0.51, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_305_61",  "name": "Intex Easy Set 305×61 cm",  "shape": "round", "volume_m3": 3.08,  "surface_m2": 7.30,  "depth_m": 0.51, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_305_76",  "name": "Intex Easy Set 305×76 cm",  "shape": "round", "volume_m3": 3.85,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_366_76",  "name": "Intex Easy Set 366×76 cm",  "shape": "round", "volume_m3": 5.62,  "surface_m2": 10.52, "depth_m": 0.61, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_396_84",  "name": "Intex Easy Set 396×84 cm",  "shape": "round", "volume_m3": 7.29,  "surface_m2": 12.32, "depth_m": 0.74, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_457_107", "name": "Intex Easy Set 457×107 cm", "shape": "round", "volume_m3": 12.43, "surface_m2": 16.40, "depth_m": 0.94, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_457_122", "name": "Intex Easy Set 457×122 cm", "shape": "round", "volume_m3": 14.14, "surface_m2": 16.40, "depth_m": 0.87, "manufacturer": "Intex"},
-    {"slug": "intex_easy_set_549_122", "name": "Intex Easy Set 549×122 cm", "shape": "round", "volume_m3": 20.65, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_244_61",  "name": "Intex Easy Set 244×61 cm (ronde)", "shape": "round", "volume_m3": 1.94,  "surface_m2": 4.67,  "depth_m": 0.51, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_305_61",  "name": "Intex Easy Set 305×61 cm (ronde)", "shape": "round", "volume_m3": 3.08,  "surface_m2": 7.30,  "depth_m": 0.51, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_305_76",  "name": "Intex Easy Set 305×76 cm (ronde)", "shape": "round", "volume_m3": 3.85,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_366_76",  "name": "Intex Easy Set 366×76 cm (ronde)", "shape": "round", "volume_m3": 5.62,  "surface_m2": 10.52, "depth_m": 0.61, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_396_84",  "name": "Intex Easy Set 396×84 cm (ronde)", "shape": "round", "volume_m3": 7.29,  "surface_m2": 12.32, "depth_m": 0.74, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_457_107", "name": "Intex Easy Set 457×107 cm (ronde)", "shape": "round", "volume_m3": 12.43, "surface_m2": 16.40, "depth_m": 0.94, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_457_122", "name": "Intex Easy Set 457×122 cm (ronde)", "shape": "round", "volume_m3": 14.14, "surface_m2": 16.40, "depth_m": 0.87, "manufacturer": "Intex"},
+    {"slug": "intex_easy_set_549_122", "name": "Intex Easy Set 549×122 cm (ronde)", "shape": "round", "volume_m3": 20.65, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Intex"},
 
     # ---- Intex Metal Frame / Prism Frame (round) — 90% fill ----
-    {"slug": "intex_metal_frame_305_76",  "name": "Intex Metal Frame 305×76 cm",  "shape": "round", "volume_m3": 4.49,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Intex"},
-    {"slug": "intex_metal_frame_366_76",  "name": "Intex Metal Frame 366×76 cm",  "shape": "round", "volume_m3": 6.50,  "surface_m2": 10.52, "depth_m": 0.66, "manufacturer": "Intex"},
-    {"slug": "intex_prism_frame_366_99",  "name": "Intex Prism Frame 366×99 cm",  "shape": "round", "volume_m3": 8.59,  "surface_m2": 10.52, "depth_m": 0.84, "manufacturer": "Intex"},
-    {"slug": "intex_prism_frame_457_107", "name": "Intex Prism Frame 457×107 cm", "shape": "round", "volume_m3": 14.61, "surface_m2": 16.40, "depth_m": 0.94, "manufacturer": "Intex"},
-    {"slug": "intex_prism_frame_457_122", "name": "Intex Prism Frame 457×122 cm", "shape": "round", "volume_m3": 16.81, "surface_m2": 16.40, "depth_m": 1.07, "manufacturer": "Intex"},
-    {"slug": "intex_prism_frame_549_122", "name": "Intex Prism Frame 549×122 cm", "shape": "round", "volume_m3": 24.31, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Intex"},
+    {"slug": "intex_metal_frame_305_76",  "name": "Intex Metal Frame 305×76 cm (ronde)", "shape": "round", "volume_m3": 4.49,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Intex"},
+    {"slug": "intex_metal_frame_366_76",  "name": "Intex Metal Frame 366×76 cm (ronde)", "shape": "round", "volume_m3": 6.50,  "surface_m2": 10.52, "depth_m": 0.66, "manufacturer": "Intex"},
+    {"slug": "intex_prism_frame_366_99",  "name": "Intex Prism Frame 366×99 cm (ronde)", "shape": "round", "volume_m3": 8.59,  "surface_m2": 10.52, "depth_m": 0.84, "manufacturer": "Intex"},
+    {"slug": "intex_prism_frame_457_107", "name": "Intex Prism Frame 457×107 cm (ronde)", "shape": "round", "volume_m3": 14.61, "surface_m2": 16.40, "depth_m": 0.94, "manufacturer": "Intex"},
+    {"slug": "intex_prism_frame_457_122", "name": "Intex Prism Frame 457×122 cm (ronde)", "shape": "round", "volume_m3": 16.81, "surface_m2": 16.40, "depth_m": 1.07, "manufacturer": "Intex"},
+    {"slug": "intex_prism_frame_549_122", "name": "Intex Prism Frame 549×122 cm (ronde)", "shape": "round", "volume_m3": 24.31, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Intex"},
 
     # ---- Intex Rectangular Frame / Prism Frame Rectangular — 90% fill ----
-    {"slug": "intex_rect_frame_220_150_60",  "name": "Intex Frame 220×150×60 cm",        "shape": "rect", "volume_m3": 1.66, "surface_m2": 3.30, "depth_m": 0.51, "manufacturer": "Intex"},
-    {"slug": "intex_rect_frame_300_200_75",  "name": "Intex Frame 300×200×75 cm",        "shape": "rect", "volume_m3": 3.83, "surface_m2": 6.00, "depth_m": 0.65, "manufacturer": "Intex"},
-    {"slug": "intex_prism_rect_400_200_100", "name": "Intex Prism Frame 400×200×100 cm", "shape": "rect", "volume_m3": 6.84, "surface_m2": 8.00, "depth_m": 0.84, "manufacturer": "Intex"},
-    {"slug": "intex_prism_rect_400_200_122", "name": "Intex Prism Frame 400×200×122 cm", "shape": "rect", "volume_m3": 8.42, "surface_m2": 8.00, "depth_m": 1.07, "manufacturer": "Intex"},
-    {"slug": "intex_rect_frame_450_220_84",  "name": "Intex Frame 450×220×84 cm",        "shape": "rect", "volume_m3": 7.13, "surface_m2": 9.90, "depth_m": 0.72, "manufacturer": "Intex"},
+    {"slug": "intex_rect_frame_220_150_60",  "name": "Intex Frame 220×150×60 cm (rect.)", "shape": "rect", "volume_m3": 1.66, "surface_m2": 3.30, "depth_m": 0.51, "manufacturer": "Intex"},
+    {"slug": "intex_rect_frame_300_200_75",  "name": "Intex Frame 300×200×75 cm (rect.)", "shape": "rect", "volume_m3": 3.83, "surface_m2": 6.00, "depth_m": 0.65, "manufacturer": "Intex"},
+    {"slug": "intex_prism_rect_400_200_100", "name": "Intex Prism Frame 400×200×100 cm (rect.)", "shape": "rect", "volume_m3": 6.84, "surface_m2": 8.00, "depth_m": 0.84, "manufacturer": "Intex"},
+    {"slug": "intex_prism_rect_400_200_122", "name": "Intex Prism Frame 400×200×122 cm (rect.)", "shape": "rect", "volume_m3": 8.42, "surface_m2": 8.00, "depth_m": 1.07, "manufacturer": "Intex"},
+    {"slug": "intex_rect_frame_450_220_84",  "name": "Intex Frame 450×220×84 cm (rect.)", "shape": "rect", "volume_m3": 7.13, "surface_m2": 9.90, "depth_m": 0.72, "manufacturer": "Intex"},
 
     # ---- Intex Ultra XTR Frame (round & rectangular) — 90% fill ----
-    {"slug": "intex_ultra_xtr_488_122",          "name": "Intex Ultra XTR 488×122 cm",        "shape": "round", "volume_m3": 19.16, "surface_m2": 18.70, "depth_m": 1.07, "manufacturer": "Intex"},
-    {"slug": "intex_ultra_xtr_549_132",          "name": "Intex Ultra XTR 549×132 cm",        "shape": "round", "volume_m3": 26.42, "surface_m2": 23.66, "depth_m": 1.17, "manufacturer": "Intex"},
-    {"slug": "intex_ultra_xtr_rect_549_274_132", "name": "Intex Ultra XTR 549×274×132 cm",    "shape": "rect",  "volume_m3": 17.20, "surface_m2": 15.04, "depth_m": 1.17, "manufacturer": "Intex"},
-    {"slug": "intex_ultra_xtr_rect_732_366_132", "name": "Intex Ultra XTR 732×366×132 cm",    "shape": "rect",  "volume_m3": 31.81, "surface_m2": 26.79, "depth_m": 1.17, "manufacturer": "Intex"},
+    {"slug": "intex_ultra_xtr_488_122",          "name": "Intex Ultra XTR 488×122 cm (ronde)", "shape": "round", "volume_m3": 19.16, "surface_m2": 18.70, "depth_m": 1.07, "manufacturer": "Intex"},
+    {"slug": "intex_ultra_xtr_549_132",          "name": "Intex Ultra XTR 549×132 cm (ronde)", "shape": "round", "volume_m3": 26.42, "surface_m2": 23.66, "depth_m": 1.17, "manufacturer": "Intex"},
+    {"slug": "intex_ultra_xtr_rect_549_274_132", "name": "Intex Ultra XTR 549×274×132 cm (rect.)", "shape": "rect",  "volume_m3": 17.20, "surface_m2": 15.04, "depth_m": 1.17, "manufacturer": "Intex"},
+    {"slug": "intex_ultra_xtr_rect_732_366_132", "name": "Intex Ultra XTR 732×366×132 cm (rect.)", "shape": "rect",  "volume_m3": 31.81, "surface_m2": 26.79, "depth_m": 1.17, "manufacturer": "Intex"},
 
     # ---- Bestway Steel Pro / Steel Pro Max (round) — 90% fill ----
-    {"slug": "bestway_steel_pro_244_61",      "name": "Bestway Steel Pro 244×61 cm",      "shape": "round", "volume_m3": 1.88,  "surface_m2": 4.67,  "depth_m": 0.51, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_366_76",      "name": "Bestway Steel Pro 366×76 cm",      "shape": "round", "volume_m3": 6.47,  "surface_m2": 10.52, "depth_m": 0.66, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_305_76",  "name": "Bestway Steel Pro Max 305×76 cm",  "shape": "round", "volume_m3": 4.68,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_366_122", "name": "Bestway Steel Pro Max 366×122 cm", "shape": "round", "volume_m3": 10.25, "surface_m2": 10.52, "depth_m": 1.07, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_427_84",  "name": "Bestway Steel Pro Max 427×84 cm",  "shape": "round", "volume_m3": 10.22, "surface_m2": 14.32, "depth_m": 0.72, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_427_122", "name": "Bestway Steel Pro Max 427×122 cm", "shape": "round", "volume_m3": 15.23, "surface_m2": 14.32, "depth_m": 1.07, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_457_122", "name": "Bestway Steel Pro Max 457×122 cm", "shape": "round", "volume_m3": 16.02, "surface_m2": 16.40, "depth_m": 1.07, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_488_122", "name": "Bestway Steel Pro Max 488×122 cm", "shape": "round", "volume_m3": 19.48, "surface_m2": 18.70, "depth_m": 1.07, "manufacturer": "Bestway"},
-    {"slug": "bestway_steel_pro_max_549_122", "name": "Bestway Steel Pro Max 549×122 cm", "shape": "round", "volume_m3": 23.06, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_244_61",      "name": "Bestway Steel Pro 244×61 cm (ronde)", "shape": "round", "volume_m3": 1.88,  "surface_m2": 4.67,  "depth_m": 0.51, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_366_76",      "name": "Bestway Steel Pro 366×76 cm (ronde)", "shape": "round", "volume_m3": 6.47,  "surface_m2": 10.52, "depth_m": 0.66, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_305_76",  "name": "Bestway Steel Pro Max 305×76 cm (ronde)", "shape": "round", "volume_m3": 4.68,  "surface_m2": 7.30,  "depth_m": 0.66, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_366_122", "name": "Bestway Steel Pro Max 366×122 cm (ronde)", "shape": "round", "volume_m3": 10.25, "surface_m2": 10.52, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_427_84",  "name": "Bestway Steel Pro Max 427×84 cm (ronde)", "shape": "round", "volume_m3": 10.22, "surface_m2": 14.32, "depth_m": 0.72, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_427_122", "name": "Bestway Steel Pro Max 427×122 cm (ronde)", "shape": "round", "volume_m3": 15.23, "surface_m2": 14.32, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_457_122", "name": "Bestway Steel Pro Max 457×122 cm (ronde)", "shape": "round", "volume_m3": 16.02, "surface_m2": 16.40, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_488_122", "name": "Bestway Steel Pro Max 488×122 cm (ronde)", "shape": "round", "volume_m3": 19.48, "surface_m2": 18.70, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_steel_pro_max_549_122", "name": "Bestway Steel Pro Max 549×122 cm (ronde)", "shape": "round", "volume_m3": 23.06, "surface_m2": 23.66, "depth_m": 1.07, "manufacturer": "Bestway"},
 
     # ---- Bestway Power Steel (rectangular & oval) — 90% fill ----
-    {"slug": "bestway_power_steel_404_201_100",      "name": "Bestway Power Steel 404×201×100 cm",      "shape": "rect", "volume_m3": 6.48,  "surface_m2": 8.12,  "depth_m": 0.84, "manufacturer": "Bestway"},
-    {"slug": "bestway_power_steel_488_244_122",      "name": "Bestway Power Steel 488×244×122 cm",      "shape": "rect", "volume_m3": 11.53, "surface_m2": 11.91, "depth_m": 1.07, "manufacturer": "Bestway"},
-    {"slug": "bestway_power_steel_oval_549_274_122", "name": "Bestway Power Steel Oval 549×274×122 cm", "shape": "oval", "volume_m3": 13.43, "surface_m2": 11.81, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_power_steel_404_201_100",      "name": "Bestway Power Steel 404×201×100 cm (rect.)", "shape": "rect", "volume_m3": 6.48,  "surface_m2": 8.12,  "depth_m": 0.84, "manufacturer": "Bestway"},
+    {"slug": "bestway_power_steel_488_244_122",      "name": "Bestway Power Steel 488×244×122 cm (rect.)", "shape": "rect", "volume_m3": 11.53, "surface_m2": 11.91, "depth_m": 1.07, "manufacturer": "Bestway"},
+    {"slug": "bestway_power_steel_oval_549_274_122", "name": "Bestway Power Steel Oval 549×274×122 cm (ovale)", "shape": "oval", "volume_m3": 13.43, "surface_m2": 11.81, "depth_m": 1.07, "manufacturer": "Bestway"},
 
     # ---- Bestway Hydrium (steel wall) — 90% fill ----
-    {"slug": "bestway_hydrium_360_120",          "name": "Bestway Hydrium 360×120 cm",          "shape": "round", "volume_m3": 10.99, "surface_m2": 10.18, "depth_m": 1.10, "manufacturer": "Bestway"},
-    {"slug": "bestway_hydrium_460_120",          "name": "Bestway Hydrium 460×120 cm",          "shape": "round", "volume_m3": 17.43, "surface_m2": 16.62, "depth_m": 1.10, "manufacturer": "Bestway"},
-    {"slug": "bestway_hydrium_oval_610_360_120", "name": "Bestway Hydrium Oval 610×360×120 cm", "shape": "oval",  "volume_m3": 19.93, "surface_m2": 17.25, "depth_m": 1.10, "manufacturer": "Bestway"},
+    {"slug": "bestway_hydrium_360_120",          "name": "Bestway Hydrium 360×120 cm (ronde)", "shape": "round", "volume_m3": 10.99, "surface_m2": 10.18, "depth_m": 1.10, "manufacturer": "Bestway"},
+    {"slug": "bestway_hydrium_460_120",          "name": "Bestway Hydrium 460×120 cm (ronde)", "shape": "round", "volume_m3": 17.43, "surface_m2": 16.62, "depth_m": 1.10, "manufacturer": "Bestway"},
+    {"slug": "bestway_hydrium_oval_610_360_120", "name": "Bestway Hydrium Oval 610×360×120 cm (ovale)", "shape": "oval",  "volume_m3": 19.93, "surface_m2": 17.25, "depth_m": 1.10, "manufacturer": "Bestway"},
 
     # ---- Generic in-ground pools ----
-    {"slug": "inground_small_25",  "name": "Piscine enterrée ~25 m³ (6×3×1.4)",  "shape": "rect", "volume_m3": 25.0, "surface_m2": 18.0, "depth_m": 1.40, "manufacturer": "Generic"},
-    {"slug": "inground_med_40",    "name": "Piscine enterrée ~40 m³ (8×4×1.4)",  "shape": "rect", "volume_m3": 40.0, "surface_m2": 32.0, "depth_m": 1.40, "manufacturer": "Generic"},
-    {"slug": "inground_large_60",  "name": "Piscine enterrée ~60 m³ (10×5×1.5)", "shape": "rect", "volume_m3": 60.0, "surface_m2": 50.0, "depth_m": 1.50, "manufacturer": "Generic"},
-    {"slug": "inground_xl_90",     "name": "Piscine enterrée ~90 m³ (12×6×1.5)", "shape": "rect", "volume_m3": 90.0, "surface_m2": 72.0, "depth_m": 1.60, "manufacturer": "Generic"},
-    {"slug": "inground_round_30",  "name": "Piscine ronde enterrée 6×1.4 m",     "shape": "round","volume_m3": 28.3, "surface_m2": 28.3, "depth_m": 1.40, "manufacturer": "Generic"},
+    {"slug": "inground_small_25",  "name": "Piscine enterrée ~25 m³ (6×3×1.4) (rect.)", "shape": "rect", "volume_m3": 25.0, "surface_m2": 18.0, "depth_m": 1.40, "manufacturer": "Generic"},
+    {"slug": "inground_med_40",    "name": "Piscine enterrée ~40 m³ (8×4×1.4) (rect.)", "shape": "rect", "volume_m3": 40.0, "surface_m2": 32.0, "depth_m": 1.40, "manufacturer": "Generic"},
+    {"slug": "inground_large_60",  "name": "Piscine enterrée ~60 m³ (10×5×1.5) (rect.)", "shape": "rect", "volume_m3": 60.0, "surface_m2": 50.0, "depth_m": 1.50, "manufacturer": "Generic"},
+    {"slug": "inground_xl_90",     "name": "Piscine enterrée ~90 m³ (12×6×1.5) (rect.)", "shape": "rect", "volume_m3": 90.0, "surface_m2": 72.0, "depth_m": 1.60, "manufacturer": "Generic"},
+    {"slug": "inground_round_30",  "name": "Piscine ronde enterrée 6×1.4 m (ronde)", "shape": "round","volume_m3": 28.3, "surface_m2": 28.3, "depth_m": 1.40, "manufacturer": "Generic"},
 
     # ---- Custom (geometry-only; user provides volume/surface/depth) ----
     # Custom is handled separately in the config flow — not in this list.
@@ -125,68 +125,132 @@ def render_pool_svg(
     temperature: float | None = None,
     duration_hours: float | None = None,
     width: int = 360,
-    height: int = 200,
+    height: int = 220,
 ) -> str:
-    """Render an inline SVG for the dashboard card.
+    """Render an inline SVG of the pool, with a "product" feel.
 
-    The shape (round/rect/oval) and aspect ratio are taken from the preset.
-    Color reflects pump state. Labels show the model name and key facts.
+    Adds a wooden deck background, white concrete coping ring around the
+    water, refined water gradient, and (for aboveground frame pools) a
+    visible side wall + small ladder. The shape and aspect ratio still
+    come from the preset.
     """
     shape: ShapeKind = preset.get("shape", "rect")  # type: ignore[assignment]
     name = preset.get("name", "Piscine")
     volume = preset.get("volume_m3")
     depth = preset.get("depth_m")
+    mfr = preset.get("manufacturer", "")
+    aboveground = mfr in ("Intex", "Bestway")
 
     palette = {
-        "idle": ("#7BC1E5", "#4A90B8"),
-        "running": ("#1FA0E3", "#0B5C8A"),
-        "forced_off": ("#9AA7B0", "#5C6B73"),
-        "unavailable": ("#D4D7DA", "#6B7178"),
+        "idle":        {"water_top": "#7BC1E5", "water_bot": "#1B7AAE", "highlight": "#FFFFFF99"},
+        "running":     {"water_top": "#33B0EA", "water_bot": "#0B5C8A", "highlight": "#FFFFFFCC"},
+        "forced_off":  {"water_top": "#A4B0B8", "water_bot": "#5C6B73", "highlight": "#FFFFFF66"},
+        "unavailable": {"water_top": "#D4D7DA", "water_bot": "#6B7178", "highlight": "#FFFFFF55"},
     }
-    fill, stroke = palette.get(state, palette["idle"])
+    pal = palette.get(state, palette["idle"])
 
-    pad = 24
-    inner_w = width - 2 * pad
-    inner_h = height - 2 * pad - 36  # leave 36px at bottom for labels
+    pad_x = 24
+    pad_top = 14
+    pad_bot = 30  # smaller — no model name, just compact vol/depth strip
+    inner_w = width - 2 * pad_x
+    inner_h = height - pad_top - pad_bot
 
-    # Compute the drawable shape so the bounding box matches dimensions.
-    elem = ""
+    # Pool geometry within the canvas — slightly inset so the coping shows.
+    coping_w = 6  # white concrete ring thickness
+    wall_h = 14 if aboveground else 0  # visible side wall band beneath the water
+
     if shape == "round":
-        radius = min(inner_w, inner_h) / 2
-        cx, cy = width / 2, pad + radius
-        elem = (
-            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" '
-            f'fill="url(#water)" stroke="{stroke}" stroke-width="3" />'
-        )
+        radius = min(inner_w, inner_h - wall_h) / 2
+        cx, cy = width / 2, pad_top + radius
+        water_shape = f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="url(#water)" />'
+        coping_shape = f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius + coping_w:.1f}" fill="none" stroke="#F0EDE6" stroke-width="{coping_w*2}" />'
+        bbox_left, bbox_top, bbox_right, bbox_bot = cx - radius, cy - radius, cx + radius, cy + radius
     elif shape == "oval":
-        rx = inner_w / 2
-        ry = inner_h / 2
-        cx, cy = width / 2, pad + ry
-        elem = (
-            f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
-            f'fill="url(#water)" stroke="{stroke}" stroke-width="3" />'
-        )
+        rx = inner_w / 2 - coping_w
+        ry = (inner_h - wall_h) / 2 - coping_w
+        cx, cy = width / 2, pad_top + ry + coping_w
+        water_shape = f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="url(#water)" />'
+        coping_shape = f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx + coping_w:.1f}" ry="{ry + coping_w:.1f}" fill="none" stroke="#F0EDE6" stroke-width="{coping_w*2}" />'
+        bbox_left, bbox_top, bbox_right, bbox_bot = cx - rx, cy - ry, cx + rx, cy + ry
     else:  # rect
-        # Use a slightly rounded rectangle for visual softness.
-        x, y = pad, pad
-        elem = (
-            f'<rect x="{x}" y="{y}" width="{inner_w}" height="{inner_h}" '
-            f'rx="14" ry="14" fill="url(#water)" stroke="{stroke}" stroke-width="3" />'
+        rect_w = inner_w - 2 * coping_w
+        rect_h = inner_h - wall_h - 2 * coping_w
+        x = pad_x + coping_w
+        y = pad_top + coping_w
+        rx_corner = 10
+        water_shape = (
+            f'<rect x="{x}" y="{y}" width="{rect_w}" height="{rect_h}" '
+            f'rx="{rx_corner}" ry="{rx_corner}" fill="url(#water)" />'
         )
+        coping_shape = (
+            f'<rect x="{x - coping_w}" y="{y - coping_w}" '
+            f'width="{rect_w + 2*coping_w}" height="{rect_h + 2*coping_w}" '
+            f'rx="{rx_corner + coping_w}" ry="{rx_corner + coping_w}" '
+            f'fill="none" stroke="#F0EDE6" stroke-width="{coping_w*2}" />'
+        )
+        bbox_left, bbox_top, bbox_right, bbox_bot = x, y, x + rect_w, y + rect_h
 
-    # Ripple lines when running.
+    # Aboveground side wall band (the visible vinyl/steel ring under the water,
+    # drawn as a darker arc below the pool bottom for round / oval, or as a
+    # bottom strip for rect).
+    wall = ""
+    if aboveground:
+        if shape == "round":
+            wall = (
+                f'<path d="M {cx - radius - coping_w:.1f} {cy:.1f} '
+                f'A {radius + coping_w:.1f} {radius + coping_w:.1f} 0 0 0 '
+                f'{cx + radius + coping_w:.1f} {cy:.1f} '
+                f'L {cx + radius + coping_w:.1f} {cy + wall_h:.1f} '
+                f'A {radius + coping_w:.1f} {(radius + coping_w) * 0.45:.1f} 0 0 1 '
+                f'{cx - radius - coping_w:.1f} {cy + wall_h:.1f} Z" '
+                f'fill="url(#wall)" />'
+            )
+        elif shape == "oval":
+            wall = (
+                f'<path d="M {cx - rx - coping_w:.1f} {cy:.1f} '
+                f'A {rx + coping_w:.1f} {ry + coping_w:.1f} 0 0 0 '
+                f'{cx + rx + coping_w:.1f} {cy:.1f} '
+                f'L {cx + rx + coping_w:.1f} {cy + wall_h:.1f} '
+                f'A {rx + coping_w:.1f} {(ry + coping_w) * 0.45:.1f} 0 0 1 '
+                f'{cx - rx - coping_w:.1f} {cy + wall_h:.1f} Z" '
+                f'fill="url(#wall)" />'
+            )
+        else:  # rect
+            wall = (
+                f'<rect x="{x - coping_w}" y="{y + rect_h + coping_w}" '
+                f'width="{rect_w + 2*coping_w}" height="{wall_h}" '
+                f'rx="2" ry="2" fill="url(#wall)" />'
+            )
+
+    # Ripple arcs when running.
     ripples = ""
     if state == "running":
-        for i, (frac_y, w_frac) in enumerate(((0.35, 0.55), (0.55, 0.45), (0.75, 0.35))):
-            cy = pad + inner_h * frac_y
-            cx = width / 2
-            half = inner_w * w_frac / 2
+        cx_w = (bbox_left + bbox_right) / 2
+        for frac_y, w_frac in ((0.32, 0.50), (0.52, 0.42), (0.72, 0.34)):
+            ry_pos = bbox_top + (bbox_bot - bbox_top) * frac_y
+            half = (bbox_right - bbox_left) * w_frac / 2
             ripples += (
-                f'<path d="M {cx-half:.1f} {cy:.1f} '
-                f'q {half/2:.1f} -6 {half:.1f} 0 '
+                f'<path d="M {cx_w-half:.1f} {ry_pos:.1f} '
+                f'q {half/2:.1f} -5 {half:.1f} 0 '
                 f't {half:.1f} 0" '
-                f'stroke="#FFFFFFAA" stroke-width="2" fill="none" />'
+                f'stroke="{pal["highlight"]}" stroke-width="2" '
+                f'fill="none" stroke-linecap="round" />'
             )
+
+    # Ladder for aboveground pools — a small white rail on the right edge.
+    ladder = ""
+    if aboveground:
+        lx = bbox_right + coping_w - 4
+        ly_top = bbox_top - 6
+        ly_bot = bbox_bot + (wall_h if shape == "rect" else wall_h - 2)
+        ladder = f'''
+        <g stroke="#E8E8E8" stroke-width="2.4" fill="none" stroke-linecap="round">
+          <line x1="{lx:.1f}" y1="{ly_top:.1f}" x2="{lx:.1f}" y2="{ly_bot:.1f}"/>
+          <line x1="{lx + 7:.1f}" y1="{ly_top:.1f}" x2="{lx + 7:.1f}" y2="{ly_bot:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_top + 6:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 6:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_top + 18:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 18:.1f}"/>
+          <line x1="{lx:.1f}" y1="{ly_top + 30:.1f}" x2="{lx + 7:.1f}" y2="{ly_top + 30:.1f}"/>
+        </g>'''
 
     # State badge.
     badge_text = {
@@ -197,33 +261,72 @@ def render_pool_svg(
     }.get(state, "veille")
     badge_color = {
         "running": "#1FA0E3",
-        "idle": "#7BC1E5",
+        "idle": "#A0BFCF",
         "forced_off": "#6B7178",
         "unavailable": "#9AA7B0",
-    }.get(state, "#7BC1E5")
+    }.get(state, "#A0BFCF")
 
-    # Bottom labels.
-    label_y = height - 14
-    vol_text = f"{volume:.1f} m³" if isinstance(volume, (int, float)) else "?"
-    depth_text = f"{depth:.2f} m" if isinstance(depth, (int, float)) else "?"
-    temp_text = f"{temperature:.1f}°C" if isinstance(temperature, (int, float)) else "—"
-    dur_text = (
-        f"{duration_hours:.1f} h"
-        if isinstance(duration_hours, (int, float))
-        else "—"
-    )
+    # Compact bottom strip — only the truly non-redundant info (the card's
+    # own header carries the model name; the schedule strip carries T° and
+    # duration). We keep volume + depth here as a hint of pool size.
+    label_y = height - 10
+    parts = []
+    if isinstance(volume, (int, float)):
+        parts.append(f"{volume:.1f} m³")
+    if isinstance(depth, (int, float)):
+        parts.append(f"prof. {depth:.2f} m")
+    bottom_label = " · ".join(parts) if parts else ""
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" preserveAspectRatio="xMidYMid meet">
   <defs>
-    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="{fill}" />
-      <stop offset="100%" stop-color="{stroke}" />
+    <radialGradient id="water" cx="40%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="{pal["water_top"]}" />
+      <stop offset="55%" stop-color="{pal["water_top"]}" />
+      <stop offset="100%" stop-color="{pal["water_bot"]}" />
+    </radialGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D8CCB8" />
+      <stop offset="100%" stop-color="#9E8B73" />
     </linearGradient>
+    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E9DCC4" />
+      <stop offset="100%" stop-color="#C9B48E" />
+    </linearGradient>
+    <pattern id="planks" x="0" y="0" width="40" height="200" patternUnits="userSpaceOnUse">
+      <rect width="40" height="200" fill="url(#deck)" />
+      <line x1="40" y1="0" x2="40" y2="200" stroke="#A99270" stroke-opacity="0.35" stroke-width="0.8" />
+    </pattern>
   </defs>
-  <text x="{pad}" y="18" font-family="sans-serif" font-size="13" font-weight="600" fill="#222">{name}</text>
-  {elem}
+
+  <!-- Wooden deck background -->
+  <rect x="0" y="0" width="{width}" height="{height}" fill="url(#planks)" rx="12" ry="12" />
+  <rect x="0" y="0" width="{width}" height="{height}" fill="none" stroke="#A99270" stroke-opacity="0.3" stroke-width="1" rx="12" ry="12" />
+
+  <!-- Aboveground side wall (drawn before water so the wall sits behind) -->
+  {wall}
+
+  <!-- White concrete coping ring (drawn beneath water shape) -->
+  {coping_shape}
+
+  <!-- Water -->
+  {water_shape}
+
+  <!-- Sun glint highlight (subtle white arc) -->
+  <g opacity="0.55">
+    <path d="M {bbox_left + (bbox_right-bbox_left)*0.22:.1f} {bbox_top + (bbox_bot-bbox_top)*0.18:.1f} q {(bbox_right-bbox_left)*0.12:.1f} -8 {(bbox_right-bbox_left)*0.28:.1f} -2"
+          stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Ripples when running -->
   {ripples}
-  <rect x="{width - pad - 64}" y="6" width="64" height="20" rx="10" fill="{badge_color}" />
-  <text x="{width - pad - 32}" y="20" text-anchor="middle" font-family="sans-serif" font-size="11" fill="white" font-weight="700">{badge_text}</text>
-  <text x="{pad}" y="{label_y}" font-family="sans-serif" font-size="11" fill="#444">Vol: {vol_text} · Prof: {depth_text} · T° eau: {temp_text} · Filt: {dur_text}</text>
+
+  <!-- Ladder for aboveground pools -->
+  {ladder}
+
+  <!-- State badge — top-right -->
+  <rect x="{width - pad_x - 64}" y="8" width="64" height="20" rx="10" fill="{badge_color}" />
+  <text x="{width - pad_x - 32}" y="22" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="white" font-weight="700">{badge_text}</text>
+
+  <!-- Compact volume / depth strip at the bottom — discreet beige text on deck -->
+  <text x="{width / 2:.1f}" y="{label_y}" text-anchor="middle" font-family="sans-serif" font-size="10.5" fill="#7a6743" font-weight="500" opacity="0.85">{bottom_label}</text>
 </svg>'''
