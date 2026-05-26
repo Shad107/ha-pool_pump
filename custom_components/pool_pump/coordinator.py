@@ -63,6 +63,7 @@ from .const import (
     ELEC_BLOCK_MARGIN,
     ELEC_BLOCK_NONE,
     ELEC_BLOCK_PUMP_OFF,
+    ELEC_BLOCK_PUMP_UNAVAILABLE,
     ELEC_BLOCK_TEMP_HIGH,
     ELEC_BLOCK_TEMP_LOW,
     MODE_AUTO,
@@ -116,6 +117,8 @@ class PoolPumpData:
     heatwave_active: bool = False
     pool_preset: dict | None = None
     pool_svg: str = ""
+    pump_available: bool = True
+    electrolyzer_available: bool = True
 
 
 def compute_duration(
@@ -237,6 +240,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             STORAGE_VERSION,
             STORAGE_KEY_TEMPLATE.format(entry_id=entry_id),
         )
+        # Tracks the last availability seen, so we can log on transition only.
+        self._availability_state: dict[str, bool] = {}
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp from disk (called once after init)."""
@@ -350,11 +355,22 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             data.runs = build_runs(pivot, duration, break_h)
             data.next_start, data.next_end = self._compute_next_window(data.runs, now)
 
+        pump_id: str = self.options[CONF_PUMP_SWITCH]
+        elec_id: str | None = self.options.get(CONF_ELECTROLYZER_SWITCH)
+        data.pump_available = self._is_available(pump_id)
+        data.electrolyzer_available = (
+            self._is_available(elec_id) if elec_id else True
+        )
+        self._log_availability_transition(pump_id, data.pump_available, "pump")
+        if elec_id:
+            self._log_availability_transition(
+                elec_id, data.electrolyzer_available, "electrolyzer"
+            )
+
         pump_target, reason = self._decide_pump(now, data, water_low_id)
         elec_target, elec_block = self._decide_electrolyzer(
             now,
             data,
-            pump_target=pump_target,
             post_start=post_start,
             pre_stop=pre_stop,
             elec_min=elec_min,
@@ -375,8 +391,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 duration_hours=data.duration_hours,
             )
 
-        await self._apply_switch(self.options[CONF_PUMP_SWITCH], pump_target, "pump", reason)
-        elec_id = self.options.get(CONF_ELECTROLYZER_SWITCH)
+        await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:
             await self._apply_switch(elec_id, elec_target, "electrolyzer", elec_block)
 
@@ -416,17 +431,28 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         now: datetime,
         data: PoolPumpData,
         *,
-        pump_target: bool,
         post_start: int,
         pre_stop: int,
         elec_min: float,
         elec_max: float,
     ) -> tuple[bool, str]:
+        """Decide on the actual physical pump state, never on the intended one.
+
+        This is the safety invariant: the cell must NEVER be energized
+        unless we can confirm water is circulating. If the pump entity is
+        unavailable, treat as a hard block — dry-firing destroys the cell
+        in seconds.
+        """
         if not self.options.get(CONF_ELECTROLYZER_SWITCH):
             return False, ELEC_BLOCK_NONE
         if self.mode == MODE_OFF:
             return False, ELEC_BLOCK_MANUAL
-        if not pump_target:
+
+        pump_id: str = self.options[CONF_PUMP_SWITCH]
+        pump_state = self.hass.states.get(pump_id)
+        if pump_state is None or pump_state.state == STATE_UNAVAILABLE:
+            return False, ELEC_BLOCK_PUMP_UNAVAILABLE
+        if pump_state.state != STATE_ON:
             return False, ELEC_BLOCK_PUMP_OFF
 
         if data.temperature_used is not None:
@@ -443,6 +469,30 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             return False, ELEC_BLOCK_MARGIN
 
         return True, ELEC_BLOCK_NONE
+
+    def _is_available(self, entity_id: str | None) -> bool:
+        if not entity_id:
+            return True
+        state = self.hass.states.get(entity_id)
+        return state is not None and state.state != STATE_UNAVAILABLE
+
+    def _log_availability_transition(
+        self, entity_id: str, available: bool, label: str
+    ) -> None:
+        prev = self._availability_state.get(entity_id)
+        if prev is None:
+            self._availability_state[entity_id] = available
+            return
+        if prev != available:
+            self._availability_state[entity_id] = available
+            if available:
+                _LOGGER.info("%s switch %s came back online", label, entity_id)
+            else:
+                _LOGGER.warning(
+                    "%s switch %s went unavailable — output suspended",
+                    label,
+                    entity_id,
+                )
 
     @staticmethod
     def _compute_next_window(

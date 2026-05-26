@@ -120,6 +120,8 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "forecast_value": d.forecast_value,
             "electrolyzer_block_reason": d.electrolyzer_block_reason,
             "temperature_mode": d.temperature_mode,
+            "pump_available": d.pump_available,
+            "electrolyzer_available": d.electrolyzer_available,
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs

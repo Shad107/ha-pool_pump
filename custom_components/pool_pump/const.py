@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 ISSUE_URL = "https://github.com/Shad107/ha-pool_pump/issues"
 
@@ -67,6 +67,7 @@ RUN_REASON_HEATWAVE = "heatwave"
 
 ELEC_BLOCK_NONE = "none"
 ELEC_BLOCK_PUMP_OFF = "pump_off"
+ELEC_BLOCK_PUMP_UNAVAILABLE = "pump_unavailable"
 ELEC_BLOCK_MARGIN = "margin"
 ELEC_BLOCK_TEMP_LOW = "temp_low"
 ELEC_BLOCK_TEMP_HIGH = "temp_high"
