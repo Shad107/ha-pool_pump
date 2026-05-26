@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.9.4";
+const CARD_VERSION = "0.9.5";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -181,11 +181,12 @@ class PoolPumpCard extends HTMLElement {
         </div>
 
         <div class="actions">
-          ${actionBtn("mdi:play",       "Marche",  () => this._setMode("on"),   modeState === "on")}
-          ${actionBtn("mdi:autorenew",  "Auto",    () => this._setMode("auto"), modeState === "auto")}
-          ${actionBtn("mdi:stop",       "Arrêt",   () => this._setMode("off"),  modeState === "off")}
-          ${actionBtn("mdi:filter",     "Backwash",() => this._backwash(),       false)}
-          ${actionBtn("mdi:refresh",    "Refresh", () => this._refresh(),        false)}
+          ${actionBtn("mdi:play",        "Marche",      () => this._setMode("on"),        modeState === "on")}
+          ${actionBtn("mdi:autorenew",   "Auto",        () => this._setMode("auto"),      modeState === "auto")}
+          ${actionBtn("mdi:water-pump",  "Pompe seule", () => this._setMode("pump_only"), modeState === "pump_only")}
+          ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off")}
+          ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false)}
+          ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false)}
         </div>
       </div>
     `;
@@ -194,9 +195,10 @@ class PoolPumpCard extends HTMLElement {
     const btns = this._root.querySelectorAll(".action-btn");
     btns[0].onclick = () => this._setMode("on");
     btns[1].onclick = () => this._setMode("auto");
-    btns[2].onclick = () => this._setMode("off");
-    btns[3].onclick = () => this._backwash();
-    btns[4].onclick = () => this._refresh();
+    btns[2].onclick = () => this._setMode("pump_only");
+    btns[3].onclick = () => this._setMode("off");
+    btns[4].onclick = () => this._backwash();
+    btns[5].onclick = () => this._refresh();
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -419,7 +421,7 @@ const STYLES = `
   }
   .actions {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
     gap: 6px;
   }
   .action-btn {
