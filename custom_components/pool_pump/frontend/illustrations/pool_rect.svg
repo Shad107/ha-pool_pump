@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Rectangular above-ground pool — hand-drawn in the style of openclipart 316492
+     (CC0). Same color palette so it pairs visually with pool_round.svg. -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="620" height="366" viewBox="0 0 620 366">
+  <defs>
+    <linearGradient id="water_rect" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5BB1CE"/>
+      <stop offset="50%" stop-color="#3899B8"/>
+      <stop offset="100%" stop-color="#2586A6"/>
+    </linearGradient>
+    <linearGradient id="front_rect" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2B8DAD"/>
+      <stop offset="100%" stop-color="#1A6584"/>
+    </linearGradient>
+    <linearGradient id="side_rect" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1A6584"/>
+      <stop offset="100%" stop-color="#2B8DAD"/>
+    </linearGradient>
+    <linearGradient id="grass_rect" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C5D853"/>
+      <stop offset="100%" stop-color="#9DB832"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Grass background (full canvas, slightly darker at the bottom) -->
+  <rect x="0" y="0" width="620" height="366" fill="url(#grass_rect)"/>
+
+  <!-- Soft shadow on the grass beneath the pool -->
+  <ellipse cx="310" cy="305" rx="280" ry="22" fill="#000" opacity="0.18"/>
+
+  <!-- Left side wall (parallelogram, perspective receding upper-left) -->
+  <polygon points="20,120 110,210 110,290 20,200" fill="url(#side_rect)"/>
+
+  <!-- Front face wall — vertical rectangle below the water front edge -->
+  <polygon points="110,210 530,210 530,290 110,290" fill="url(#front_rect)"/>
+
+  <!-- Top coping rail (light beige band, visible all around the rim) -->
+  <polygon points="20,120 530,120 600,210 530,210 110,210 20,210"
+           fill="#EDE5D2" stroke="#C9BC9A" stroke-width="1.4"
+           opacity="0"/>
+  <!-- Concrete coping outline (thin white-ish band on top of the wall edges) -->
+  <polygon points="20,120 530,120 600,210 110,210"
+           fill="none" stroke="#F3EDDF" stroke-width="4"/>
+
+  <!-- Water surface (parallelogram inside the coping) -->
+  <polygon points="30,128 525,128 590,205 118,205" fill="url(#water_rect)"/>
+
+  <!-- Mosaic tile dashed band hugging the inner edge of the water -->
+  <polygon points="40,135 518,135 580,200 130,200"
+           fill="none" stroke="#1F84BD" stroke-width="2.5"
+           stroke-dasharray="8 3" opacity="0.85"/>
+
+  <!-- Water highlights: a few thin white waves to suggest movement -->
+  <g stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.55">
+    <path d="M 180 155 q 35 -6 70 0 t 70 0"/>
+    <path d="M 240 175 q 32 -5 64 0 t 64 0"/>
+    <path d="M 300 190 q 30 -4 60 0 t 60 0"/>
+  </g>
+
+  <!-- Sun glint (white ellipse in the upper-left area of the water) -->
+  <ellipse cx="170" cy="160" rx="50" ry="8" fill="#FFFFFF"
+           opacity="0.35" transform="rotate(-8 170 160)"/>
+  <ellipse cx="155" cy="155" rx="14" ry="3" fill="#FFFFFF"
+           opacity="0.6" transform="rotate(-8 155 155)"/>
+
+  <!-- Vertical metal posts on the visible front face -->
+  <g fill="#2586A6">
+    <rect x="105" y="118" width="10" height="172" rx="2"/>
+    <rect x="525" y="118" width="10" height="172" rx="2"/>
+    <rect x="313" y="118" width="8" height="172" rx="2"/>
+  </g>
+
+  <!-- Back-left and back-right posts following the side wall perspective.
+       Drawn as oblique parallelograms going from top edge down. -->
+  <polygon points="18,118 26,118 116,208 108,208 108,290 100,290 100,208"
+           fill="#2586A6"/>
+
+  <!-- White rim of each front post for a chrome highlight -->
+  <g fill="#FFFFFF" opacity="0.65">
+    <rect x="105" y="118" width="3" height="172"/>
+    <rect x="525" y="118" width="3" height="172"/>
+    <rect x="313" y="118" width="2" height="172"/>
+  </g>
+
+  <!-- Top rail (horizontal silver band across the top of the front edge) -->
+  <rect x="30" y="120" width="510" height="6" fill="#D7DEE3" stroke="#9AA5AC" stroke-width="0.8" rx="2"/>
+
+  <!-- Ladder on the right edge of the front wall -->
+  <g stroke="#D6DCE0" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="552" y1="115" x2="552" y2="318"/>
+    <line x1="566" y1="115" x2="566" y2="318"/>
+    <line x1="552" y1="130" x2="566" y2="130"/>
+    <line x1="552" y1="170" x2="566" y2="170"/>
+    <line x1="552" y1="210" x2="566" y2="210"/>
+    <line x1="552" y1="250" x2="566" y2="250"/>
+    <line x1="552" y1="290" x2="566" y2="290"/>
+  </g>
+  <g stroke="#9AA5AC" stroke-width="0.8" fill="none">
+    <line x1="554" y1="115" x2="554" y2="318" opacity="0.6"/>
+    <line x1="568" y1="115" x2="568" y2="318" opacity="0.6"/>
+  </g>
+</svg>

@@ -670,8 +670,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         user_url = self.options.get(CONF_POOL_IMAGE_URL)
         if user_url:
             data.pool_image_url = user_url
-        if preset is not None and preset.get("shape") == "round":
-            data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.svg"
+        if preset is not None:
+            shape = preset.get("shape")
+            if shape == "round":
+                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.svg"
+            elif shape == "rect":
+                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_rect.svg"
 
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:
