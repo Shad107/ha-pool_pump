@@ -10,23 +10,44 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.3.5";
+const CARD_VERSION = "0.4.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
 class PoolPumpCard extends HTMLElement {
-  static getStubConfig(hass) {
-    // Suggest the first pool entity found, otherwise placeholder.
+  static async getStubConfig(hass) {
+    // Suggest the first pool entity found from the running integration.
     const candidates = Object.keys(hass.states).filter(
       (id) =>
         id.startsWith("sensor.") &&
         id.includes("pool_pump_manager") &&
         (id.endsWith("_piscine") || id.endsWith("_pool"))
     );
-    return {
+
+    const stub = {
       type: "custom:pool-pump-card",
       pool_entity: candidates[0] || "sensor.pool_pump_manager_piscine",
     };
+
+    // Pre-fill pump_switch / electrolyzer_switch from the integration's
+    // config entry so the user doesn't have to re-enter what they already
+    // configured. Best-effort: ignore if the WS call fails (offline, no
+    // entry, permissions…).
+    try {
+      const entries = await hass.callWS({ type: "config_entries/get" });
+      const entry = entries.find((e) => e.domain === "pool_pump");
+      if (entry) {
+        const opts = { ...(entry.data || {}), ...(entry.options || {}) };
+        if (opts.pump_switch) stub.pump_switch = opts.pump_switch;
+        if (opts.electrolyzer_switch) {
+          stub.electrolyzer_switch = opts.electrolyzer_switch;
+        }
+      }
+    } catch (_) {
+      // ignore — the picker still works without the pre-fill
+    }
+
+    return stub;
   }
 
   static async getConfigElement() {
@@ -298,10 +319,13 @@ const STYLES = `
     width: 100%;
     height: auto;
   }
-  .visual.running svg ellipse,
-  .visual.running svg circle,
-  .visual.running svg rect[fill^="url"] {
+  /* Animate only the water shape — earlier rect[fill^="url"] was too
+     broad and made the wooden deck pulse too. The new SVG always tags
+     the water shape with class="pool-water" so the selector is exact. */
+  .visual.running svg .pool-water {
     animation: gentle-shimmer 4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
   }
   .no-svg {
     padding: 24px;
