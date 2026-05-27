@@ -25,11 +25,11 @@ cancel_backwash:
 
 reset_water_model:
   name: Reset water temperature model
-  description: Reset or seed the air-based water temperature model. Useful after install when the bootstrap was biased (e.g., installed at peak air temperature) or when you measured the real water temperature manually.
+  description: Reset or seed the air-based water temperature model. When provided with a value, also records a calibration point so the model self-tunes its bias over time.
   fields:
     water_temperature:
       name: Water temperature (°C, optional)
-      description: If provided, force the model to start from this temperature. If omitted, the model is reset and re-bootstraps from the next air sample.
+      description: If provided, force the model to this temperature AND record a calibration point. Over multiple uses the integration learns a temperature offset to correct systematic bias.
       example: 22.0
       selector:
         number:
@@ -37,3 +37,7 @@ reset_water_model:
           max: 50
           step: 0.5
           mode: box
+
+clear_calibration:
+  name: Clear learned calibration
+  description: Forget all calibration points and reset the learned temperature offset to 0. Use if past calibrations were wrong or you want to start fresh.

@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.9.11"
+VERSION = "0.10.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -46,9 +46,17 @@ CONF_WINTERIZATION_END_MONTH = "winterization_end_month"
 CONF_POOL_IMAGE_URL = "pool_image_url"
 CONF_BACKWASH_DURATION_MINUTES = "backwash_duration_minutes"
 CONF_PUMP_SHORT_CYCLE_THRESHOLD = "pump_short_cycle_threshold"
+CONF_WEATHER_ENTITY = "weather_entity"
+CONF_AUTOTUNE_ENABLED = "autotune_enabled"
+CONF_AUTOTUNE_WINDOW_DAYS = "autotune_window_days"
 
 DEFAULT_BACKWASH_DURATION_MINUTES = 5
 DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD = 30  # seconds; brief pump off ignored
+DEFAULT_AUTOTUNE_ENABLED = True
+DEFAULT_AUTOTUNE_WINDOW_DAYS = 30
+DEFAULT_AUTOTUNE_MAX_OFFSET = 5.0  # safety clamp, °C
+DEFAULT_AUTOTUNE_HALF_LIFE_DAYS = 7.0  # newer calibrations weighted more
+DEFAULT_FORECAST_PREHEAT_THRESHOLD = 18.0  # °C; below this tomorrow → longer today
 
 DEFAULT_SMOOTHING_WINDOW_HOURS = 24.0
 DEFAULT_SOLAR_COEFFICIENT = 0.6  # °C / hour at full sun (P_solar = P_peak)

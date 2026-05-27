@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.9.11";
+const CARD_VERSION = "0.10.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -174,6 +174,8 @@ class PoolPumpCard extends HTMLElement {
             : (svg || `<div class="no-svg">No preset selected — pick a pool model in the integration options to enable the visual.</div>`)}
         </div>
 
+        ${this._renderTimeline(status)}
+
         <div class="schedule">
           ${cell("mdi:clock-start", "Début", fmtTime(start), this._pick(c.start_entity))}
           ${cell("mdi:clock-end", "Fin",    fmtTime(end), this._pick(c.end_entity))}
@@ -208,6 +210,68 @@ class PoolPumpCard extends HTMLElement {
       el.style.cursor = "pointer";
       el.onclick = () => this._openMoreInfo(el.getAttribute("data-entity"));
     });
+  }
+
+  _renderTimeline(status) {
+    if (!status || !status.attributes || !status.attributes.runs) return "";
+    const runs = status.attributes.runs;
+    if (!runs.length) return "";
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const dayMs = 24 * 3600 * 1000;
+    const nowPct = Math.max(0, Math.min(100, ((now - startOfDay) / dayMs) * 100));
+
+    let runsHtml = "";
+    runs.forEach((r) => {
+      try {
+        const s = new Date(r.start);
+        const e = new Date(r.end);
+        const sPct = Math.max(0, ((s - startOfDay) / dayMs) * 100);
+        const ePct = Math.min(100, ((e - startOfDay) / dayMs) * 100);
+        const w = Math.max(0, ePct - sPct);
+        if (w > 0) {
+          runsHtml += `<div class="timeline-run" style="left:${sPct}%; width:${w}%" title="${fmtTimeLabel(s)} → ${fmtTimeLabel(e)}"></div>`;
+        }
+      } catch (_) {
+        // ignore malformed run
+      }
+    });
+
+    const fc = status.attributes.forecast_temperature_max_24h;
+    const fcCond = status.attributes.forecast_condition;
+    const learnedOffset = status.attributes.learned_temperature_offset;
+    const calPoints = status.attributes.calibration_points;
+    let extras = [];
+    if (fc !== null && fc !== undefined) {
+      const icon = forecastIcon(fcCond);
+      extras.push(
+        `<span title="T° max prévue 24h">${icon} ${parseFloat(fc).toFixed(1)}°C</span>`
+      );
+    }
+    if (calPoints && learnedOffset !== undefined && learnedOffset !== null) {
+      const sign = learnedOffset >= 0 ? "+" : "";
+      extras.push(
+        `<span title="Offset appris (${calPoints} calibration${calPoints > 1 ? "s" : ""})">⚖ ${sign}${parseFloat(learnedOffset).toFixed(2)}°C</span>`
+      );
+    }
+    const extrasHtml = extras.length
+      ? `<div class="timeline-extras">${extras.join("")}</div>`
+      : "";
+
+    return `
+      <div class="timeline">
+        <div class="timeline-bar">
+          ${runsHtml}
+          <div class="timeline-now" style="left:${nowPct}%" title="Maintenant"></div>
+        </div>
+        <div class="timeline-labels">
+          <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+        </div>
+        ${extrasHtml}
+      </div>
+    `;
   }
 
   _powerCells(c) {
@@ -289,6 +353,33 @@ function fmtTime(state) {
   }
 }
 
+function fmtTimeLabel(d) {
+  try {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+function forecastIcon(cond) {
+  const map = {
+    sunny: "☀",
+    clear: "☀",
+    "clear-night": "☾",
+    cloudy: "☁",
+    partlycloudy: "⛅",
+    fog: "🌫",
+    rainy: "🌧",
+    pouring: "🌧",
+    snowy: "❄",
+    lightning: "⛈",
+    "lightning-rainy": "⛈",
+    windy: "🌬",
+    hail: "🌨",
+  };
+  return map[cond] || "🌤";
+}
+
 function cell(icon, label, value, entityId) {
   const dataAttr = entityId ? ` data-entity="${entityId}"` : "";
   return `
@@ -365,6 +456,7 @@ const STYLES = `
     overflow: hidden;
     background: var(--secondary-background-color);
     padding: 8px;
+    position: relative;
   }
   .visual svg, .visual .pool-img {
     display: block;
@@ -383,6 +475,28 @@ const STYLES = `
     animation: gentle-shimmer 4s ease-in-out infinite;
     transform-origin: center;
     transform-box: fill-box;
+  }
+  /* Water-flow sweep: a soft gradient slides across the pool visual
+     whenever the pump is running. The overlay is positioned over the
+     whole visual box and only catches the eye thanks to the gradient's
+     narrow band; pointer-events none so it never blocks clicks. */
+  .visual.running::after {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 8px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 45%,
+      rgba(255, 255, 255, 0.20) 50%,
+      rgba(255, 255, 255, 0.12) 55%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: water-flow 5s linear infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
   }
   .no-svg {
     padding: 24px;
@@ -493,6 +607,52 @@ const STYLES = `
   .placeholder-subtitle {
     font-size: 12px;
   }
+  /* Timeline (24h day strip with runs + now marker) */
+  .timeline {
+    background: var(--secondary-background-color);
+    padding: 10px 12px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .timeline-bar {
+    position: relative;
+    height: 14px;
+    background: rgba(127, 127, 127, 0.15);
+    border-radius: 7px;
+    overflow: visible;
+  }
+  .timeline-run {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #66bb6a, #388e3c);
+    border-radius: 3px;
+    box-shadow: 0 0 4px rgba(76, 175, 80, 0.4);
+  }
+  .timeline-now {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--primary-color, #2196f3);
+    border-radius: 1px;
+    box-shadow: 0 0 6px var(--primary-color, #2196f3);
+  }
+  .timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--secondary-text-color);
+  }
+  .timeline-extras {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--secondary-text-color);
+    margin-top: 2px;
+  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
@@ -500,6 +660,10 @@ const STYLES = `
   @keyframes gentle-shimmer {
     0%, 100% { filter: brightness(1); }
     50%      { filter: brightness(1.08); }
+  }
+  @keyframes water-flow {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 `;
 

@@ -143,6 +143,16 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "solar_fraction": round(d.solar_fraction, 3) if d.solar_fraction else 0,
             "solar_coefficient_effective": d.solar_coefficient_effective,
             "tau_hours_effective": round(d.tau_hours_effective, 2) if d.tau_hours_effective else 0,
+            "water_modeled_raw": (
+                round(d.water_modeled_raw, 2)
+                if d.water_modeled_raw is not None
+                else None
+            ),
+            "learned_temperature_offset": round(d.learned_temperature_offset, 3),
+            "calibration_points": d.calibration_points,
+            "forecast_temperature_max_24h": d.forecast_temperature_max_24h,
+            "forecast_condition": d.forecast_condition,
+            "forecast_preheat_active": d.forecast_preheat_active,
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs

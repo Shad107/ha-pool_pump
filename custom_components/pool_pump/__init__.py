@@ -98,6 +98,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 c.reset_water_model(float(value) if value is not None else None)
 
         hass.services.async_register(DOMAIN, "reset_water_model", _reset)
+
+    if not hass.services.has_service(DOMAIN, "clear_calibration"):
+        async def _clear(_call):
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.clear_calibration()
+
+        hass.services.async_register(DOMAIN, "clear_calibration", _clear)
     return True
 
 

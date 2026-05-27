@@ -41,7 +41,9 @@
           "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
           "backwash_duration_minutes": "Default backwash duration (minutes)",
           "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)",
-          "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)"
+          "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)",
+          "weather_entity": "Weather entity (optional — enables 24h forecast lookahead)",
+          "autotune_enabled": "Self-tune water temperature offset from manual calibrations"
         }
       }
     },
@@ -81,7 +83,9 @@
           "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
           "backwash_duration_minutes": "Default backwash duration (minutes)",
           "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)",
-          "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)"
+          "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)",
+          "weather_entity": "Weather entity (optional — enables 24h forecast lookahead)",
+          "autotune_enabled": "Self-tune water temperature offset from manual calibrations"
         }
       }
     }

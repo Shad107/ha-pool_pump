@@ -35,6 +35,8 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     COLD_THRESHOLD_CELSIUS,
+    CONF_AUTOTUNE_ENABLED,
+    CONF_AUTOTUNE_WINDOW_DAYS,
     CONF_BREAK_HOURS,
     CONF_ELECTROLYZER_MAX_TEMP,
     CONF_ELECTROLYZER_MIN_TEMP,
@@ -54,6 +56,7 @@ from .const import (
     CONF_PUMP_POWER_SENSOR,
     CONF_PUMP_SHORT_CYCLE_THRESHOLD,
     CONF_PUMP_SWITCH,
+    CONF_WEATHER_ENTITY,
     CONF_WINTERIZATION_END_MONTH,
     CONF_WINTERIZATION_START_MONTH,
     CONF_SMOOTHING_WINDOW_HOURS,
@@ -66,9 +69,14 @@ from .const import (
     CONF_TEMPERATURE_OFFSET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WATER_LEVEL_CRITICAL,
+    DEFAULT_AUTOTUNE_ENABLED,
+    DEFAULT_AUTOTUNE_HALF_LIFE_DAYS,
+    DEFAULT_AUTOTUNE_MAX_OFFSET,
+    DEFAULT_AUTOTUNE_WINDOW_DAYS,
     DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
+    DEFAULT_FORECAST_PREHEAT_THRESHOLD,
     DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD,
     DEFAULT_SMOOTHING_WINDOW_HOURS,
     DEFAULT_SOLAR_COEFFICIENT,
@@ -151,6 +159,12 @@ class PoolPumpData:
     pump_available: bool = True
     electrolyzer_available: bool = True
     air_temperature_smoothed: float | None = None
+    water_modeled_raw: float | None = None
+    learned_temperature_offset: float = 0.0
+    calibration_points: int = 0
+    forecast_temperature_max_24h: float | None = None
+    forecast_condition: str | None = None
+    forecast_preheat_active: bool = False
     solar_power_w: float | None = None
     solar_peak_w: float | None = None
     solar_fraction: float = 0.0
@@ -336,6 +350,15 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # One-shot timer used to refresh exactly when the post_start
         # margin expires, instead of waiting for the next 60-second tick.
         self._deferred_refresh_unsub = None
+        # Auto-tuning calibration: list of (timestamp, delta) where
+        # delta = real_value - modeled_value at calibration time. The
+        # weighted mean of recent deltas becomes the learned_offset.
+        self._calibrations: list[tuple[datetime, float]] = []
+        self._learned_offset: float = 0.0
+        # Forecast cache (refreshed at most once per hour to avoid
+        # spamming the weather entity).
+        self._forecast_cache: dict[str, Any] = {}
+        self._forecast_cache_at: datetime | None = None
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -343,6 +366,17 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if not stored:
             return
         self._water_modeled = stored.get("water_temp")
+        # Calibration history & learned offset
+        for entry in stored.get("calibrations", []) or []:
+            try:
+                ts = datetime.fromisoformat(entry["t"])
+                self._calibrations.append((ts, float(entry["d"])))
+            except (KeyError, ValueError, TypeError):
+                continue
+        try:
+            self._learned_offset = float(stored.get("learned_offset") or 0.0)
+        except (TypeError, ValueError):
+            self._learned_offset = 0.0
         last = stored.get("last_update")
         if last:
             try:
@@ -414,6 +448,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     if self._backwash_ends_at
                     else None
                 ),
+                "calibrations": [
+                    {"t": t.isoformat(), "d": d}
+                    for (t, d) in self._calibrations[-200:]
+                ],
+                "learned_offset": self._learned_offset,
             }
         )
 
@@ -442,18 +481,82 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self.hass.async_create_task(self.async_request_refresh())
 
     def reset_water_model(self, value: float | None = None) -> None:
-        """Reset the modeled water temperature.
+        """Reset the modeled water temperature, recording a calibration point.
 
         If `value` is None, drop the persisted state so the model
-        re-bootstraps from the next air sample. If a value is given,
-        force the model to that temperature (useful when the user reads
-        the real water temp manually and wants to seed the model).
+        re-bootstraps from the next air sample (no calibration recorded).
+
+        If a value is given, treat it as the ground-truth water
+        temperature: record the delta (value - modeled_before) as a new
+        calibration sample, recompute the learned offset, then reset
+        the model so that displayed temperature equals `value`.
         """
-        self._water_modeled = value
+        if value is not None and self._water_modeled is not None:
+            delta = value - self._water_modeled
+            now = dt_util.now()
+            self._calibrations.append((now, delta))
+            # Cap to last 365 days to bound storage
+            cutoff = now - timedelta(days=365)
+            self._calibrations = [(t, d) for (t, d) in self._calibrations if t >= cutoff]
+            self._recompute_learned_offset()
+            # Reset model state so T_used = modeled + learned_offset == value
+            self._water_modeled = value - self._learned_offset
+        elif value is not None:
+            self._water_modeled = value - self._learned_offset
+        else:
+            self._water_modeled = None
+
         self._last_model_update = None
         self._air_samples = []
         self.hass.async_create_task(self._async_save_model())
         self.hass.async_create_task(self.async_request_refresh())
+
+    def clear_calibration(self) -> None:
+        """Forget all calibration points and the learned offset."""
+        self._calibrations = []
+        self._learned_offset = 0.0
+        self.hass.async_create_task(self._async_save_model())
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def _recompute_learned_offset(self) -> None:
+        """Recompute the EMA-weighted offset from recent calibrations.
+
+        Each calibration is weighted by 2^(-age_days / half_life), so
+        recent ones dominate but older corrections still contribute.
+        The result is clamped to ±DEFAULT_AUTOTUNE_MAX_OFFSET so a
+        single bad calibration can't blow up the model.
+        """
+        if not self._calibrations:
+            self._learned_offset = 0.0
+            return
+
+        window_days = float(
+            self.options.get(
+                CONF_AUTOTUNE_WINDOW_DAYS, DEFAULT_AUTOTUNE_WINDOW_DAYS
+            )
+        )
+        half_life = DEFAULT_AUTOTUNE_HALF_LIFE_DAYS
+        now = dt_util.now()
+        cutoff = now - timedelta(days=window_days)
+        recent = [(t, d) for (t, d) in self._calibrations if t >= cutoff]
+        if not recent:
+            self._learned_offset = 0.0
+            return
+
+        total_w = 0.0
+        total_wd = 0.0
+        for (t, d) in recent:
+            age_days = max(0.0, (now - t).total_seconds() / 86400.0)
+            w = 2.0 ** (-age_days / half_life)
+            total_w += w
+            total_wd += w * d
+
+        offset = total_wd / total_w if total_w > 0 else 0.0
+        offset = max(
+            -DEFAULT_AUTOTUNE_MAX_OFFSET,
+            min(DEFAULT_AUTOTUNE_MAX_OFFSET, offset),
+        )
+        self._learned_offset = offset
 
     def trigger_backwash(self, duration_minutes: float | None = None) -> None:
         """Start a backwash cycle: pump ON + cell OFF for `duration_minutes`."""
@@ -490,9 +593,82 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # wraps year boundary
         return m >= start or m <= end
 
+    async def _read_weather_forecast(self, now: datetime) -> None:
+        """Refresh the cached 24-hour forecast from the configured weather entity.
+
+        Cached for one hour to avoid hammering the weather service every tick.
+        On any error (entity missing, service unsupported, malformed reply),
+        silently skip — forecast is best-effort, not safety-critical.
+        """
+        weather_id = self.options.get(CONF_WEATHER_ENTITY)
+        if not weather_id:
+            self._forecast_cache = {}
+            return
+        if (
+            self._forecast_cache_at is not None
+            and (now - self._forecast_cache_at).total_seconds() < 3600
+            and self._forecast_cache
+        ):
+            return
+        try:
+            resp = await self.hass.services.async_call(
+                "weather",
+                "get_forecasts",
+                {"entity_id": weather_id, "type": "hourly"},
+                blocking=True,
+                return_response=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            _LOGGER.debug("Weather forecast unavailable (%s): %s", weather_id, exc)
+            return
+
+        forecasts = (resp or {}).get(weather_id, {}).get("forecast") or []
+        if not forecasts:
+            return
+
+        end = now + timedelta(hours=24)
+        temps: list[float] = []
+        conditions: list[str] = []
+        for f in forecasts:
+            raw_dt = f.get("datetime", "")
+            try:
+                ts = datetime.fromisoformat(str(raw_dt).replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+            if ts > end:
+                break
+            t = f.get("temperature")
+            if t is not None:
+                try:
+                    temps.append(float(t))
+                except (TypeError, ValueError):
+                    pass
+            c = f.get("condition")
+            if c:
+                conditions.append(str(c))
+
+        from collections import Counter
+
+        self._forecast_cache = {
+            "max_temp": max(temps) if temps else None,
+            "min_temp": min(temps) if temps else None,
+            "condition": (
+                Counter(conditions).most_common(1)[0][0] if conditions else None
+            ),
+        }
+        self._forecast_cache_at = now
+
     async def _async_update_data(self) -> PoolPumpData:
         now = dt_util.now()
         data = PoolPumpData(mode=self.mode)
+        await self._read_weather_forecast(now)
+        data.forecast_temperature_max_24h = self._forecast_cache.get("max_temp")
+        data.forecast_condition = self._forecast_cache.get("condition")
+        if data.forecast_temperature_max_24h is not None:
+            data.forecast_preheat_active = (
+                data.forecast_temperature_max_24h
+                < DEFAULT_FORECAST_PREHEAT_THRESHOLD
+            )
 
         temp_id: str = self.options[CONF_TEMPERATURE_SENSOR]
         forecast_id: str | None = self.options.get(CONF_FORECAST_SENSOR)
@@ -579,6 +755,16 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.solar_coefficient_effective = k_sun
         data.tau_hours_effective = tau_hours
 
+        autotune_enabled = bool(
+            self.options.get(CONF_AUTOTUNE_ENABLED, DEFAULT_AUTOTUNE_ENABLED)
+        )
+        # Recompute the offset every tick so it decays smoothly as
+        # calibrations age out of the window.
+        if autotune_enabled:
+            self._recompute_learned_offset()
+        else:
+            self._learned_offset = 0.0
+
         if temp_mode == TEMP_MODE_AIR_MODEL and raw_temp is not None:
             data.air_temperature_raw = raw_temp
 
@@ -617,13 +803,27 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             )
             self._last_model_update = now
             await self._async_save_model()
-            data.temperature_used = self._water_modeled
+            data.water_modeled_raw = self._water_modeled
+            data.temperature_used = (
+                self._water_modeled + self._learned_offset
+                if self._water_modeled is not None
+                else None
+            )
         elif temp_mode == TEMP_MODE_WATER:
+            # Probe IS the truth — no learned offset applied.
             data.temperature_used = raw_temp
         else:
             # Air mode but air sensor unavailable
             data.air_temperature_raw = None
-            data.temperature_used = self._water_modeled  # last known modeled value
+            data.water_modeled_raw = self._water_modeled
+            data.temperature_used = (
+                self._water_modeled + self._learned_offset
+                if self._water_modeled is not None
+                else None
+            )
+
+        data.learned_temperature_offset = self._learned_offset
+        data.calibration_points = len(self._calibrations)
 
         pivot = _pivot_for_day(now, pivot_hour)
         if data.temperature_used is not None:

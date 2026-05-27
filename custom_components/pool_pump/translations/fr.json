@@ -41,7 +41,9 @@
           "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
           "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
           "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)",
-          "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)"
+          "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)",
+          "weather_entity": "Entité météo (optionnelle — active la prévision 24h)",
+          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles"
         }
       }
     },
@@ -81,7 +83,9 @@
           "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
           "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
           "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)",
-          "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)"
+          "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)",
+          "weather_entity": "Entité météo (optionnelle — active la prévision 24h)",
+          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles"
         }
       }
     }

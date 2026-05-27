@@ -19,6 +19,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_AUTOTUNE_ENABLED,
     CONF_BREAK_HOURS,
     CONF_ELECTROLYZER_MAX_TEMP,
     CONF_ELECTROLYZER_MIN_TEMP,
@@ -48,8 +49,10 @@ from .const import (
     CONF_TEMPERATURE_OFFSET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WATER_LEVEL_CRITICAL,
+    CONF_WEATHER_ENTITY,
     CONF_WINTERIZATION_END_MONTH,
     CONF_WINTERIZATION_START_MONTH,
+    DEFAULT_AUTOTUNE_ENABLED,
     DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_BREAK_HOURS,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
@@ -300,6 +303,10 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 description={"suggested_value": current.get(CONF_FORECAST_SENSOR)},
             ): EntitySelector(EntitySelectorConfig(domain="sensor")),
             vol.Optional(
+                CONF_WEATHER_ENTITY,
+                description={"suggested_value": current.get(CONF_WEATHER_ENTITY)},
+            ): EntitySelector(EntitySelectorConfig(domain="weather")),
+            vol.Optional(
                 CONF_HEATWAVE_THRESHOLD,
                 default=current.get(
                     CONF_HEATWAVE_THRESHOLD, DEFAULT_HEATWAVE_THRESHOLD
@@ -401,6 +408,12 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 CONF_POOL_IMAGE_URL,
                 description={"suggested_value": current.get(CONF_POOL_IMAGE_URL)},
             ): str,
+            vol.Optional(
+                CONF_AUTOTUNE_ENABLED,
+                default=bool(
+                    current.get(CONF_AUTOTUNE_ENABLED, DEFAULT_AUTOTUNE_ENABLED)
+                ),
+            ): bool,
         }
     )
     return vol.Schema(schema)
