@@ -40,6 +40,7 @@ from .const import (
     CONF_PUMP_SWITCH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
+    CONF_SOLAR_INSTALLED_WATTS,
     CONF_SOLAR_PEAK_SENSOR,
     CONF_SOLAR_POWER_SENSOR,
     CONF_TAU_HOURS,
@@ -235,6 +236,16 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
             )
         ] = EntitySelector(
             EntitySelectorConfig(domain="sensor", device_class="power")
+        )
+        schema[
+            vol.Optional(
+                CONF_SOLAR_INSTALLED_WATTS,
+                description={
+                    "suggested_value": current.get(CONF_SOLAR_INSTALLED_WATTS)
+                },
+            )
+        ] = NumberSelector(
+            NumberSelectorConfig(min=0, max=30000, step=50, mode=NumberSelectorMode.BOX)
         )
         schema[
             vol.Optional(

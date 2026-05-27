@@ -28,6 +28,7 @@ from typing import Any
 
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -57,6 +58,7 @@ from .const import (
     CONF_WINTERIZATION_START_MONTH,
     CONF_SMOOTHING_WINDOW_HOURS,
     CONF_SOLAR_COEFFICIENT,
+    CONF_SOLAR_INSTALLED_WATTS,
     CONF_SOLAR_PEAK_SENSOR,
     CONF_SOLAR_POWER_SENSOR,
     CONF_TAU_HOURS,
@@ -331,6 +333,9 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._pump_last_off: datetime | None = None
         # Backwash mode: when active, pump ON + cell OFF until ends_at.
         self._backwash_ends_at: datetime | None = None
+        # One-shot timer used to refresh exactly when the post_start
+        # margin expires, instead of waiting for the next 60-second tick.
+        self._deferred_refresh_unsub = None
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -410,6 +415,25 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     else None
                 ),
             }
+        )
+
+    def _schedule_deferred_refresh(self, seconds: float) -> None:
+        """Schedule a one-shot refresh in `seconds`, replacing any pending one.
+
+        Used to wake up exactly when the post_start margin expires, so the
+        electrolyzer turns ON immediately instead of waiting up to 60 s for
+        the next coordinator tick.
+        """
+        if self._deferred_refresh_unsub is not None:
+            self._deferred_refresh_unsub()
+            self._deferred_refresh_unsub = None
+
+        async def _fire(_now):
+            self._deferred_refresh_unsub = None
+            await self.async_request_refresh()
+
+        self._deferred_refresh_unsub = async_call_later(
+            self.hass, max(1.0, seconds), _fire
         )
 
     def set_mode(self, mode: str) -> None:
@@ -515,9 +539,22 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         solar_power = _read_float(
             self.hass, self.options.get(CONF_SOLAR_POWER_SENSOR)
         )
-        solar_peak = _read_float(
-            self.hass, self.options.get(CONF_SOLAR_PEAK_SENSOR)
-        )
+        # Peak reference priority: explicit installed capacity (stable)
+        # beats a sensor like `mptt_*_max_power_today`, which resets at
+        # midnight and saturates solar_fraction to ~100% in early morning.
+        solar_peak: float | None = None
+        solar_installed = self.options.get(CONF_SOLAR_INSTALLED_WATTS)
+        if solar_installed is not None:
+            try:
+                v = float(solar_installed)
+                if v > 0:
+                    solar_peak = v
+            except (TypeError, ValueError):
+                pass
+        if solar_peak is None:
+            solar_peak = _read_float(
+                self.hass, self.options.get(CONF_SOLAR_PEAK_SENSOR)
+            )
         if solar_power is not None and solar_peak and solar_peak > 0:
             data.solar_fraction = max(0.0, min(1.0, solar_power / solar_peak))
         data.solar_power_w = solar_power
@@ -837,6 +874,9 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if self._pump_continuous_on_since is not None:
             on_for = (now - self._pump_continuous_on_since).total_seconds()
             if on_for < post_start:
+                # Wake up exactly when the margin expires so the cell
+                # turns ON without waiting for the next 60-second tick.
+                self._schedule_deferred_refresh(post_start - on_for + 1)
                 return False, ELEC_BLOCK_MARGIN
         elif not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
             return False, ELEC_BLOCK_MARGIN
