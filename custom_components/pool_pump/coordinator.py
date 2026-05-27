@@ -638,14 +638,21 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         )
         if pump_is_on:
             if self._pump_continuous_on_since is None:
-                # Coming back from OFF — check if it was a short cycle
-                if (
+                # First observation of the pump in this coordinator instance
+                # (e.g., after HA restart). Don't restart the post_start
+                # timer from scratch — trust the physical switch's
+                # last_changed timestamp as the start of the continuous ON
+                # period. This avoids forcing the electrolyzer to wait
+                # another 120 s every time HA reboots.
+                last_changed = getattr(pump_phys_state, "last_changed", None)
+                if last_changed is not None:
+                    self._pump_continuous_on_since = dt_util.as_local(last_changed)
+                elif (
                     self._pump_last_off is not None
                     and (now - self._pump_last_off).total_seconds() < short_cycle
                 ):
-                    # Brief glitch: keep the prior continuous_on_since if any.
-                    # We restore from the same instant minus a tiny offset so
-                    # the elapsed time is preserved.
+                    # Brief OFF glitch (short cycle) — preserve the prior
+                    # continuous-on start by using the OFF moment.
                     self._pump_continuous_on_since = self._pump_last_off
                 else:
                     self._pump_continuous_on_since = now
