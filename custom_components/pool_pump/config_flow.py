@@ -118,9 +118,65 @@ def _required_schema(current: dict[str, Any]) -> vol.Schema:
     )
 
 
-def _options_schema(current: dict[str, Any]) -> vol.Schema:
+def _detect_solar_sensors(hass) -> tuple[str | None, str | None]:
+    """Scan hass.states for likely solar power sensors.
+
+    Returns (instant_power_entity_id, peak_today_entity_id) or (None, None)
+    if no obvious candidate. Heuristic: device_class=power + entity_id /
+    friendly_name contains solar/pv/mptt/victron, with "peak"/"max"/"today"
+    flagging the peak candidate vs the instantaneous one.
+    """
+    if hass is None:
+        return None, None
+    instant = None
+    peak = None
+    for state in hass.states.async_all("sensor"):
+        a = state.attributes
+        if a.get("device_class") != "power":
+            continue
+        eid = state.entity_id.lower()
+        fn = (a.get("friendly_name", "") or "").lower()
+        text = eid + " " + fn
+        is_solar = any(k in text for k in ("solar", "pv ", "_pv_", "mptt", "mppt", "solarcharger"))
+        if not is_solar:
+            continue
+        is_peak = any(k in text for k in ("max_power", "maxpower", "peak", "max power"))
+        if is_peak and peak is None:
+            peak = state.entity_id
+        elif not is_peak and instant is None:
+            # Prefer the simplest "victron_solar_power" or "gx_device_pv_power"
+            # over the tracker-* subsensors that are usually 0.
+            if "tracker_" in text and "_pv_power" in text:
+                continue
+            instant = state.entity_id
+    return instant, peak
+
+
+def _detect_power_sensor_for_switch(hass, switch_entity_id: str | None) -> str | None:
+    """Find a power sensor associated with a switch entity (by name prefix)."""
+    if not switch_entity_id or hass is None:
+        return None
+    base = switch_entity_id.split(".", 1)[1] if "." in switch_entity_id else switch_entity_id
+    for state in hass.states.async_all("sensor"):
+        if state.attributes.get("device_class") != "power":
+            continue
+        if base in state.entity_id:
+            return state.entity_id
+    return None
+
+
+def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
     mode = current.get(CONF_TEMPERATURE_MODE, DEFAULT_TEMPERATURE_MODE)
     schema: dict[Any, Any] = {}
+
+    # Auto-detected suggestions for sensors the user hasn't explicitly set
+    detected_solar_instant, detected_solar_peak = _detect_solar_sensors(hass)
+    detected_pump_power = _detect_power_sensor_for_switch(
+        hass, current.get(CONF_PUMP_SWITCH)
+    )
+    detected_elec_power = _detect_power_sensor_for_switch(
+        hass, current.get(CONF_ELECTROLYZER_SWITCH)
+    )
 
     # Preset selector is always shown — it drives the dashboard SVG and,
     # in air_model mode, the default tau.
@@ -172,7 +228,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
         schema[
             vol.Optional(
                 CONF_SOLAR_POWER_SENSOR,
-                description={"suggested_value": current.get(CONF_SOLAR_POWER_SENSOR)},
+                description={
+                    "suggested_value": current.get(CONF_SOLAR_POWER_SENSOR)
+                    or detected_solar_instant
+                },
             )
         ] = EntitySelector(
             EntitySelectorConfig(domain="sensor", device_class="power")
@@ -180,7 +239,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
         schema[
             vol.Optional(
                 CONF_SOLAR_PEAK_SENSOR,
-                description={"suggested_value": current.get(CONF_SOLAR_PEAK_SENSOR)},
+                description={
+                    "suggested_value": current.get(CONF_SOLAR_PEAK_SENSOR)
+                    or detected_solar_peak
+                },
             )
         ] = EntitySelector(
             EntitySelectorConfig(domain="sensor", device_class="power")
@@ -280,7 +342,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
             ): EntitySelector(EntitySelectorConfig(domain="binary_sensor")),
             vol.Optional(
                 CONF_PUMP_POWER_SENSOR,
-                description={"suggested_value": current.get(CONF_PUMP_POWER_SENSOR)},
+                description={
+                    "suggested_value": current.get(CONF_PUMP_POWER_SENSOR)
+                    or detected_pump_power
+                },
             ): EntitySelector(
                 EntitySelectorConfig(domain="sensor", device_class="power")
             ),
@@ -288,6 +353,7 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_ELECTROLYZER_POWER_SENSOR,
                 description={
                     "suggested_value": current.get(CONF_ELECTROLYZER_POWER_SENSOR)
+                    or detected_elec_power
                 },
             ): EntitySelector(
                 EntitySelectorConfig(domain="sensor", device_class="power")
@@ -353,7 +419,7 @@ class PoolPumpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
             return self.async_create_entry(title=NAME, data=data)
         return self.async_show_form(
-            step_id="options", data_schema=_options_schema(self._base)
+            step_id="options", data_schema=_options_schema(self._base, hass=self.hass)
         )
 
     @staticmethod
@@ -378,5 +444,5 @@ class PoolPumpOptionsFlow(config_entries.OptionsFlow):
             )
         current = {**self.entry.data, **self.entry.options}
         return self.async_show_form(
-            step_id="init", data_schema=_options_schema(current)
+            step_id="init", data_schema=_options_schema(current, hass=self.hass)
         )

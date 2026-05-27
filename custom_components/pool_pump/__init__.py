@@ -90,6 +90,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 c.cancel_backwash()
 
         hass.services.async_register(DOMAIN, "cancel_backwash", _cancel)
+
+    if not hass.services.has_service(DOMAIN, "reset_water_model"):
+        async def _reset(call):
+            value = call.data.get("water_temperature")
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.reset_water_model(float(value) if value is not None else None)
+
+        hass.services.async_register(DOMAIN, "reset_water_model", _reset)
     return True
 
 

@@ -417,6 +417,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self.mode = mode
         self.hass.async_create_task(self.async_request_refresh())
 
+    def reset_water_model(self, value: float | None = None) -> None:
+        """Reset the modeled water temperature.
+
+        If `value` is None, drop the persisted state so the model
+        re-bootstraps from the next air sample. If a value is given,
+        force the model to that temperature (useful when the user reads
+        the real water temp manually and wants to seed the model).
+        """
+        self._water_modeled = value
+        self._last_model_update = None
+        self._air_samples = []
+        self.hass.async_create_task(self._async_save_model())
+        self.hass.async_create_task(self.async_request_refresh())
+
     def trigger_backwash(self, duration_minutes: float | None = None) -> None:
         """Start a backwash cycle: pump ON + cell OFF for `duration_minutes`."""
         dur = float(

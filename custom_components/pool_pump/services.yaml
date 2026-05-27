@@ -22,3 +22,18 @@ backwash:
 cancel_backwash:
   name: Cancel backwash
   description: Stop an in-progress backwash cycle and return to automatic mode.
+
+reset_water_model:
+  name: Reset water temperature model
+  description: Reset or seed the air-based water temperature model. Useful after install when the bootstrap was biased (e.g., installed at peak air temperature) or when you measured the real water temperature manually.
+  fields:
+    water_temperature:
+      name: Water temperature (°C, optional)
+      description: If provided, force the model to start from this temperature. If omitted, the model is reset and re-bootstraps from the next air sample.
+      example: 22.0
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.5
+          mode: box
