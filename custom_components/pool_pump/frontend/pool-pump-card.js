@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.10.0";
+const CARD_VERSION = "0.10.1";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -329,7 +329,12 @@ class PoolPumpCard extends HTMLElement {
 }
 
 function modeLabel(s) {
-  return { auto: "Auto", on: "Marche", off: "Arrêt" }[s] || s;
+  return ({
+    auto: "Auto",
+    on: "Marche",
+    off: "Arrêt",
+    pump_only: "Pompe seule",
+  })[s] || s;
 }
 
 function statusLabel(s) {
@@ -340,6 +345,9 @@ function statusLabel(s) {
     manual_on: "Marche forcée",
     manual_off: "Arrêt forcé",
     water_low: "Niveau d'eau bas",
+    pump_only: "Pompe seule",
+    backwash: "Backwash",
+    winterization: "Hivernage",
   })[s] || s;
 }
 
