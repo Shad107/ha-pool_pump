@@ -41,3 +41,53 @@ reset_water_model:
 clear_calibration:
   name: Clear learned calibration
   description: Forget all calibration points and reset the learned temperature offset to 0. Use if past calibrations were wrong or you want to start fresh.
+
+set_chemistry:
+  name: Set chemistry readings
+  description: Update one or more chemistry parameters (pH, chlorine, TAC...) and refresh the diagnosis. Use after a test strip / probe reading.
+  fields:
+    ph:
+      name: pH
+      example: 7.4
+      selector: {number: {min: 0, max: 14, step: 0.1, mode: box}}
+    free_chlorine:
+      name: Free chlorine (ppm)
+      example: 2.0
+      selector: {number: {min: 0, max: 20, step: 0.1, mode: box}}
+    total_chlorine:
+      name: Total chlorine (ppm)
+      example: 2.0
+      selector: {number: {min: 0, max: 20, step: 0.1, mode: box}}
+    tac:
+      name: Total alkalinity / TAC (ppm)
+      example: 100
+      selector: {number: {min: 0, max: 300, step: 10, mode: box}}
+    th:
+      name: Total hardness / TH (ppm)
+      example: 200
+      selector: {number: {min: 0, max: 1000, step: 10, mode: box}}
+    cya:
+      name: Cyanuric acid / CYA (ppm)
+      example: 40
+      selector: {number: {min: 0, max: 300, step: 5, mode: box}}
+    salt:
+      name: Salt (ppm)
+      example: 4000
+      selector: {number: {min: 0, max: 6000, step: 50, mode: box}}
+    orp:
+      name: ORP / redox (mV)
+      example: 700
+      selector: {number: {min: 0, max: 1000, step: 10, mode: box}}
+
+maintenance_start:
+  name: Start maintenance cycle
+  description: Force pump ON + cell OFF for a duration (default 3h). Used after manual chemical dosing to mix the products. Auto-reverts to AUTO at the end.
+  fields:
+    duration_minutes:
+      name: Duration (minutes)
+      example: 180
+      selector: {number: {min: 30, max: 1440, step: 30, mode: box}}
+
+maintenance_cancel:
+  name: Cancel maintenance cycle
+  description: Stop an in-progress maintenance cycle and return to AUTO immediately.

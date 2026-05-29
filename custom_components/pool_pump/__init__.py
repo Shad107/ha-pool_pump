@@ -17,7 +17,12 @@ from .frontend_setup import JSModuleRegistration
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.SELECT, Platform.BINARY_SENSOR]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+]
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 CARD_FILE = "pool-pump-card.js"
@@ -105,6 +110,45 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 c.clear_calibration()
 
         hass.services.async_register(DOMAIN, "clear_calibration", _clear)
+
+    if not hass.services.has_service(DOMAIN, "set_chemistry"):
+        async def _set_chem(call):
+            """Batch-set chemistry readings.
+
+            Accepts one or more of: ph, free_chlorine, total_chlorine, tac,
+            th, cya, salt, orp. Updates the matching number entities and
+            triggers a diagnosis refresh.
+            """
+            for c in hass.data.get(DOMAIN, {}).values():
+                for key in (
+                    "ph", "free_chlorine", "total_chlorine", "tac",
+                    "th", "cya", "salt", "orp",
+                ):
+                    v = call.data.get(key)
+                    if v is not None:
+                        try:
+                            c.set_chemistry_value(key, float(v))
+                        except (TypeError, ValueError):
+                            _LOGGER.warning(
+                                "Invalid chemistry value for %s: %r", key, v
+                            )
+
+        hass.services.async_register(DOMAIN, "set_chemistry", _set_chem)
+
+    if not hass.services.has_service(DOMAIN, "maintenance_start"):
+        async def _maint_start(call):
+            duration = float(call.data.get("duration_minutes") or 180)
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.trigger_maintenance(duration)
+
+        hass.services.async_register(DOMAIN, "maintenance_start", _maint_start)
+
+    if not hass.services.has_service(DOMAIN, "maintenance_cancel"):
+        async def _maint_cancel(_call):
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.cancel_maintenance()
+
+        hass.services.async_register(DOMAIN, "maintenance_cancel", _maint_cancel)
     return True
 
 

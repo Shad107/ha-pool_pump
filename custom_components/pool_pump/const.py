@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.10.1"
+VERSION = "0.11.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -50,6 +50,19 @@ CONF_WEATHER_ENTITY = "weather_entity"
 CONF_AUTOTUNE_ENABLED = "autotune_enabled"
 CONF_AUTOTUNE_WINDOW_DAYS = "autotune_window_days"
 
+# Chemistry parameters: each can be sourced from a user-provided sensor
+# (auto-measuring device like Ondilo, Flipr, Blue Riiot) or from the
+# number entity we create ourselves for manual entry. Both paths feed
+# the same diagnosis logic.
+CONF_CHEM_PH_SENSOR = "chem_ph_sensor"
+CONF_CHEM_FREE_CHLORINE_SENSOR = "chem_free_chlorine_sensor"
+CONF_CHEM_TOTAL_CHLORINE_SENSOR = "chem_total_chlorine_sensor"
+CONF_CHEM_TAC_SENSOR = "chem_tac_sensor"
+CONF_CHEM_TH_SENSOR = "chem_th_sensor"
+CONF_CHEM_CYA_SENSOR = "chem_cya_sensor"
+CONF_CHEM_SALT_SENSOR = "chem_salt_sensor"
+CONF_CHEM_ORP_SENSOR = "chem_orp_sensor"
+
 DEFAULT_BACKWASH_DURATION_MINUTES = 5
 DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD = 30  # seconds; brief pump off ignored
 DEFAULT_AUTOTUNE_ENABLED = True
@@ -57,6 +70,25 @@ DEFAULT_AUTOTUNE_WINDOW_DAYS = 30
 DEFAULT_AUTOTUNE_MAX_OFFSET = 5.0  # safety clamp, °C
 DEFAULT_AUTOTUNE_HALF_LIFE_DAYS = 7.0  # newer calibrations weighted more
 DEFAULT_FORECAST_PREHEAT_THRESHOLD = 18.0  # °C; below this tomorrow → longer today
+
+# Chemistry parameter metadata.
+# Each entry: (key, label_fr, unit, min, max, step, default_target,
+#              target_low, target_high, enabled_by_default)
+CHEM_PARAMS = [
+    # key,              label,                unit,   min,   max,   step,  tgt,   low,    high,   default_on
+    ("ph",              "pH",                 "pH",   0.0,   14.0,  0.1,   7.4,   7.2,    7.6,    True),
+    ("free_chlorine",   "Chlore libre",       "ppm",  0.0,   20.0,  0.1,   2.0,   1.0,    3.0,    True),
+    ("total_chlorine",  "Chlore total",       "ppm",  0.0,   20.0,  0.1,   2.0,   1.0,    3.5,    True),
+    ("tac",             "Alcalinité (TAC)",   "ppm",  0.0,   300.0, 10.0,  100.0, 80.0,   120.0,  True),
+    ("th",              "Dureté (TH)",        "ppm",  0.0,   1000.0,10.0,  200.0, 100.0,  300.0,  False),
+    ("cya",             "Stabilisant (CYA)",  "ppm",  0.0,   300.0, 5.0,   40.0,  30.0,   50.0,   False),
+    ("salt",            "Sel",                "ppm",  0.0,   6000.0,50.0,  4000.0,3000.0, 5000.0, False),
+    ("orp",             "ORP (rédox)",        "mV",   0.0,   1000.0,10.0,  700.0, 650.0,  750.0,  False),
+]
+
+# Maintenance mode: pump forced ON + cell forced OFF for a duration,
+# then auto-revert to MODE_AUTO. Used after chemical dosing to mix.
+MODE_MAINTENANCE = "maintenance"
 
 DEFAULT_SMOOTHING_WINDOW_HOURS = 24.0
 DEFAULT_SOLAR_COEFFICIENT = 0.6  # °C / hour at full sun (P_solar = P_peak)
@@ -89,7 +121,7 @@ MODE_AUTO = "auto"
 MODE_ON = "on"
 MODE_OFF = "off"
 MODE_PUMP_ONLY = "pump_only"
-MODE_OPTIONS = [MODE_AUTO, MODE_ON, MODE_PUMP_ONLY, MODE_OFF]
+MODE_OPTIONS = [MODE_AUTO, MODE_ON, MODE_PUMP_ONLY, MODE_OFF, MODE_MAINTENANCE]
 
 RUN_REASON_OFF = "off"
 RUN_REASON_AUTO = "auto"
@@ -100,6 +132,7 @@ RUN_REASON_HEATWAVE = "heatwave"
 RUN_REASON_BACKWASH = "backwash"
 RUN_REASON_WINTERIZATION = "winterization"
 RUN_REASON_PUMP_ONLY = "pump_only"
+RUN_REASON_MAINTENANCE = "maintenance"
 
 ELEC_BLOCK_NONE = "none"
 ELEC_BLOCK_PUMP_OFF = "pump_off"
@@ -111,3 +144,4 @@ ELEC_BLOCK_MANUAL = "manual"
 ELEC_BLOCK_BACKWASH = "backwash"
 ELEC_BLOCK_WINTERIZATION = "winterization"
 ELEC_BLOCK_PUMP_ONLY = "pump_only"
+ELEC_BLOCK_MAINTENANCE = "maintenance"

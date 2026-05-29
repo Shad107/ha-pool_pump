@@ -34,6 +34,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CHEM_PARAMS,
     COLD_THRESHOLD_CELSIUS,
     CONF_AUTOTUNE_ENABLED,
     CONF_AUTOTUNE_WINDOW_DAYS,
@@ -92,9 +93,11 @@ from .const import (
     ELEC_BLOCK_PUMP_UNAVAILABLE,
     ELEC_BLOCK_TEMP_HIGH,
     ELEC_BLOCK_TEMP_LOW,
+    ELEC_BLOCK_MAINTENANCE,
     ELEC_BLOCK_PUMP_ONLY,
     ELEC_BLOCK_WINTERIZATION,
     MODE_AUTO,
+    MODE_MAINTENANCE,
     MODE_OFF,
     MODE_ON,
     MODE_PUMP_ONLY,
@@ -103,6 +106,7 @@ from .const import (
     RUN_REASON_HEATWAVE,
     RUN_REASON_MANUAL_OFF,
     RUN_REASON_MANUAL_ON,
+    RUN_REASON_MAINTENANCE,
     RUN_REASON_OFF,
     RUN_REASON_PUMP_ONLY,
     RUN_REASON_WATER_LOW,
@@ -132,6 +136,35 @@ class Run:
 
     def contains(self, when: datetime) -> bool:
         return self.start <= when < self.end
+
+
+@dataclass
+class ChemistryReading:
+    """One chemistry parameter reading + diagnosis."""
+
+    key: str
+    label: str
+    unit: str
+    value: float | None
+    target: float
+    target_low: float
+    target_high: float
+    status: str  # "ok", "low", "high", "unknown"
+
+
+@dataclass
+class ChemistryRecommendation:
+    """A suggested dose + pump action for a specific issue."""
+
+    issue_key: str  # e.g. "ph_high", "free_chlorine_low"
+    severity: str  # "info", "warning", "critical"
+    title: str
+    product: str
+    dose_g: float | None = None
+    dose_ml: float | None = None
+    pump_action: str = "auto"  # "maintenance", "auto", "off"
+    pump_duration_min: int = 0
+    notes: str = ""
 
 
 @dataclass
@@ -179,6 +212,10 @@ class PoolPumpData:
     backwash_active: bool = False
     backwash_ends_at: datetime | None = None
     winterization_active: bool = False
+    maintenance_active: bool = False
+    maintenance_ends_at: datetime | None = None
+    chemistry: list[ChemistryReading] = field(default_factory=list)
+    chemistry_recommendations: list[ChemistryRecommendation] = field(default_factory=list)
 
 
 def compute_duration(
@@ -347,6 +384,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._pump_last_off: datetime | None = None
         # Backwash mode: when active, pump ON + cell OFF until ends_at.
         self._backwash_ends_at: datetime | None = None
+        # Maintenance mode: same as backwash physically (pump ON + cell OFF)
+        # but used after chemical dosing. Auto-reverts to AUTO at ends_at.
+        self._maintenance_ends_at: datetime | None = None
+        # Number entities (per chemistry key) registered by the number platform.
+        self._chemistry_numbers: dict[str, "NumberEntity"] = {}
         # One-shot timer used to refresh exactly when the post_start
         # margin expires, instead of waiting for the next 60-second tick.
         self._deferred_refresh_unsub = None
@@ -415,6 +457,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._backwash_ends_at = datetime.fromisoformat(bw)
             except ValueError:
                 self._backwash_ends_at = None
+        # Maintenance timer
+        mt = stored.get("maintenance_ends_at")
+        if mt:
+            try:
+                self._maintenance_ends_at = datetime.fromisoformat(mt)
+            except ValueError:
+                self._maintenance_ends_at = None
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -446,6 +495,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 "backwash_ends_at": (
                     self._backwash_ends_at.isoformat()
                     if self._backwash_ends_at
+                    else None
+                ),
+                "maintenance_ends_at": (
+                    self._maintenance_ends_at.isoformat()
+                    if self._maintenance_ends_at
                     else None
                 ),
                 "calibrations": [
@@ -518,6 +572,194 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self.hass.async_create_task(self._async_save_model())
         self.hass.async_create_task(self.async_request_refresh())
 
+    def _build_chemistry_diagnosis(
+        self, volume_m3: float | None
+    ) -> tuple[list[ChemistryReading], list[ChemistryRecommendation]]:
+        """Read all chemistry params + generate dose recommendations.
+
+        Volume-aware dosing per piscinist-standard formulas:
+            pH−  : HCl 33%, ~10 mL/m³ per 0.1 pH to drop
+            pH+  : Na₂CO₃, ~12 g/m³ per 0.1 pH to raise
+            Cl   : HTH 65%, ~1.5 g/m³ per ppm to raise
+            TAC  : bicarbonate de sodium, ~17 g/m³ per 10 ppm
+            TH   : CaCl₂, ~11 g/m³ per 10 ppm (no down-dose, only dilution)
+            CYA  : stabilisant cyanurique, ~13 g/m³ per 10 ppm
+            Sel  : (target − current) × volume / 1000 kg
+
+        Volume falls back to 30 m³ if no preset configured (warns user
+        in the recommendation `notes`).
+        """
+        readings: list[ChemistryReading] = []
+        recos: list[ChemistryRecommendation] = []
+        vol = float(volume_m3) if volume_m3 else 30.0
+        vol_warning = "" if volume_m3 else "Volume estimé à 30 m³ (configure un preset)"
+
+        # Read all values + build the diagnosis records.
+        values: dict[str, float | None] = {}
+        for key, label, unit, _vmin, _vmax, _step, tgt, low, high, _on in CHEM_PARAMS:
+            v = self._read_chemistry_value(key)
+            values[key] = v
+            if v is None:
+                status = "unknown"
+            elif v < low:
+                status = "low"
+            elif v > high:
+                status = "high"
+            else:
+                status = "ok"
+            readings.append(
+                ChemistryReading(
+                    key=key, label=label, unit=unit, value=v,
+                    target=tgt, target_low=low, target_high=high, status=status,
+                )
+            )
+
+        # === Generate volume-aware recommendations ===
+        # pH first (do NEVER mix pH and chlorine on the same maintenance window).
+        ph = values.get("ph")
+        if ph is not None and ph > 7.6:
+            delta = round((ph - 7.4) / 0.1, 1)
+            dose_ml = round(10 * vol * delta, 0)
+            recos.append(ChemistryRecommendation(
+                issue_key="ph_high", severity="warning",
+                title=f"pH élevé ({ph:.1f}) → cible 7.4",
+                product="pH− (HCl 33%)",
+                dose_ml=dose_ml,
+                pump_action="maintenance", pump_duration_min=180,
+                notes=(vol_warning or "Verser près du refoulement, jamais en surface."),
+            ))
+        elif ph is not None and ph < 7.2:
+            delta = round((7.4 - ph) / 0.1, 1)
+            dose_g = round(12 * vol * delta, 0)
+            recos.append(ChemistryRecommendation(
+                issue_key="ph_low", severity="warning",
+                title=f"pH bas ({ph:.1f}) → cible 7.4",
+                product="pH+ (carbonate de sodium Na₂CO₃)",
+                dose_g=dose_g,
+                pump_action="maintenance", pump_duration_min=180,
+                notes=(vol_warning or "Dissoudre dans seau d'eau, verser progressivement."),
+            ))
+
+        # Free chlorine — pay attention to chloramines for breakpoint.
+        fc = values.get("free_chlorine")
+        tc = values.get("total_chlorine")
+        chloramines = (
+            tc - fc if (tc is not None and fc is not None and tc >= fc) else None
+        )
+        if fc is not None and fc < 1.0:
+            if chloramines is not None and chloramines >= 0.3:
+                # Breakpoint shock: need ~10× chloramines to break combined Cl.
+                target_ppm = max(5.0, chloramines * 10)
+                dose_g = round(1.5 * vol * target_ppm, 0)
+                recos.append(ChemistryRecommendation(
+                    issue_key="free_chlorine_breakpoint", severity="critical",
+                    title=f"Chlore libre {fc:.1f} ppm + chloramines {chloramines:.1f} ppm → breakpoint shock",
+                    product="Chlore choc (HTH 65% ou dichloroisocyanurate)",
+                    dose_g=dose_g,
+                    pump_action="maintenance", pump_duration_min=360,
+                    notes="Dose forte pour casser le chlore combiné. NE PAS mélanger avec pH dans la même heure.",
+                ))
+            else:
+                target_ppm = 2.0
+                dose_g = round(1.5 * vol * (target_ppm - fc), 0)
+                recos.append(ChemistryRecommendation(
+                    issue_key="free_chlorine_low", severity="warning",
+                    title=f"Chlore libre bas ({fc:.1f} ppm) → cible 2 ppm",
+                    product="Chlore choc (HTH 65%)",
+                    dose_g=dose_g,
+                    pump_action="maintenance", pump_duration_min=240,
+                    notes="Ou laisser la cellule remonter en mode Auto si la production suit.",
+                ))
+        elif fc is not None and fc > 5.0:
+            recos.append(ChemistryRecommendation(
+                issue_key="free_chlorine_high", severity="info",
+                title=f"Chlore libre élevé ({fc:.1f} ppm)",
+                product="Attendre",
+                pump_action="auto", pump_duration_min=0,
+                notes="Baisser la production cellule ou attendre 24-48h de dégradation UV.",
+            ))
+
+        # TAC
+        tac = values.get("tac")
+        if tac is not None and tac < 80:
+            delta_ppm = 100 - tac
+            dose_g = round(17 * vol * (delta_ppm / 10), 0)
+            recos.append(ChemistryRecommendation(
+                issue_key="tac_low", severity="warning",
+                title=f"TAC bas ({tac:.0f} ppm) → cible 100",
+                product="Bicarbonate de sodium",
+                dose_g=dose_g,
+                pump_action="maintenance", pump_duration_min=180,
+                notes="Aide à stabiliser le pH. Ajouter en 2 doses si delta > 30 ppm.",
+            ))
+        elif tac is not None and tac > 150:
+            recos.append(ChemistryRecommendation(
+                issue_key="tac_high", severity="info",
+                title=f"TAC élevé ({tac:.0f} ppm)",
+                product="Renouvellement partiel d'eau",
+                pump_action="auto", pump_duration_min=0,
+                notes="Pas de chimie pour baisser le TAC, juste diluer.",
+            ))
+
+        # CYA
+        cya = values.get("cya")
+        if cya is not None and cya < 30:
+            delta_ppm = 40 - cya
+            dose_g = round(13 * vol * (delta_ppm / 10), 0)
+            recos.append(ChemistryRecommendation(
+                issue_key="cya_low", severity="info",
+                title=f"CYA bas ({cya:.0f} ppm) → cible 40",
+                product="Stabilisant (acide cyanurique)",
+                dose_g=dose_g,
+                pump_action="maintenance", pump_duration_min=1440,
+                notes="Se dissout lentement, pompe 24h. Verser dans skimmer.",
+            ))
+        elif cya is not None and cya > 80:
+            recos.append(ChemistryRecommendation(
+                issue_key="cya_high", severity="warning",
+                title=f"CYA trop élevé ({cya:.0f} ppm) — bloque le chlore",
+                product="Renouvellement partiel d'eau",
+                pump_action="auto", pump_duration_min=0,
+                notes="Renouveler ~30% du volume si CYA > 100 ppm.",
+            ))
+
+        # TH
+        th = values.get("th")
+        if th is not None and th < 100:
+            delta_ppm = 200 - th
+            dose_g = round(11 * vol * (delta_ppm / 10), 0)
+            recos.append(ChemistryRecommendation(
+                issue_key="th_low", severity="info",
+                title=f"TH bas ({th:.0f} ppm) → cible 200",
+                product="Chlorure de calcium (CaCl₂)",
+                dose_g=dose_g,
+                pump_action="maintenance", pump_duration_min=180,
+                notes="Eau trop douce = liner et inox attaqués.",
+            ))
+        elif th is not None and th > 500:
+            recos.append(ChemistryRecommendation(
+                issue_key="th_high", severity="warning",
+                title=f"TH élevé ({th:.0f} ppm) — risque calcaire",
+                product="Séquestrant calcaire",
+                pump_action="maintenance", pump_duration_min=180,
+                notes="Ou renouvellement partiel d'eau (~30%).",
+            ))
+
+        # Salt (saltwater chlorinator pools)
+        salt = values.get("salt")
+        if salt is not None and salt < 3000:
+            kg = round((4000 - salt) * vol / 1000, 1)
+            recos.append(ChemistryRecommendation(
+                issue_key="salt_low", severity="warning",
+                title=f"Sel bas ({salt:.0f} ppm) — cellule sous-alimentée",
+                product="Sel piscine spécial électrolyse",
+                dose_g=kg * 1000,
+                pump_action="maintenance", pump_duration_min=240,
+                notes="Verser dans skimmer en plusieurs fois, dissolution complète en 24h.",
+            ))
+
+        return readings, recos
+
     def _recompute_learned_offset(self) -> None:
         """Recompute the EMA-weighted offset from recent calibrations.
 
@@ -574,6 +816,57 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     def cancel_backwash(self) -> None:
         """Cancel an in-progress backwash."""
         self._backwash_ends_at = None
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def trigger_maintenance(self, duration_minutes: float) -> None:
+        """Force pump ON + cell OFF for `duration_minutes`, then auto-revert.
+
+        Used after a chemical dosing operation to ensure proper mixing.
+        Mechanically identical to backwash but tracked separately so the
+        UI can show a "maintenance après dosage" state instead of
+        confusing the user with the filter cleaning vocabulary.
+        """
+        dur = float(duration_minutes)
+        self._maintenance_ends_at = dt_util.now() + timedelta(minutes=dur)
+        _LOGGER.info(
+            "Maintenance started: %.1f min (ends at %s)",
+            dur,
+            self._maintenance_ends_at,
+        )
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def cancel_maintenance(self) -> None:
+        """Cancel an in-progress maintenance cycle."""
+        self._maintenance_ends_at = None
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def register_chemistry_number(self, key: str, entity) -> None:
+        """Track a number entity so the coordinator can read its value."""
+        self._chemistry_numbers[key] = entity
+
+    def _read_chemistry_value(self, key: str) -> float | None:
+        """Resolve a chemistry reading: sensor override > number entity."""
+        sensor_id = self.options.get(f"chem_{key}_sensor")
+        if sensor_id:
+            v = _read_float(self.hass, sensor_id)
+            if v is not None:
+                return v
+        ent = self._chemistry_numbers.get(key)
+        if ent is not None and getattr(ent, "_value", None) is not None:
+            return float(ent._value)
+        return None
+
+    def set_chemistry_value(self, key: str, value: float) -> None:
+        """Update a chemistry number entity from a service call."""
+        ent = self._chemistry_numbers.get(key)
+        if ent is None:
+            _LOGGER.warning("Unknown chemistry key: %s", key)
+            return
+        ent._value = value
+        try:
+            ent.async_write_ha_state()
+        except Exception:  # noqa: BLE001 — entity may not be added yet
+            pass
         self.hass.async_create_task(self.async_request_refresh())
 
     @staticmethod
@@ -858,6 +1151,19 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.backwash_active = self._backwash_ends_at is not None
         data.backwash_ends_at = self._backwash_ends_at
 
+        # Maintenance timer (post-dosing mixing). Same physical effect as
+        # backwash (pump ON, cell OFF) but auto-reverts to MODE_AUTO at end.
+        if (
+            self._maintenance_ends_at is not None
+            and now >= self._maintenance_ends_at
+        ):
+            _LOGGER.info("Maintenance cycle ended — reverting to AUTO")
+            self._maintenance_ends_at = None
+            if self.mode == MODE_MAINTENANCE:
+                self.mode = MODE_AUTO
+        data.maintenance_active = self._maintenance_ends_at is not None
+        data.maintenance_ends_at = self._maintenance_ends_at
+
         # Winterization (month-range check)
         win_start = int(self.options.get(CONF_WINTERIZATION_START_MONTH, 0) or 0)
         win_end = int(self.options.get(CONF_WINTERIZATION_END_MONTH, 0) or 0)
@@ -914,6 +1220,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.electrolyzer_should_be_on = elec_target
         data.electrolyzer_block_reason = elec_block
         data.reason = reason
+
+        # Chemistry diagnosis (cheap, recomputed every tick; values only
+        # change on user input or auto-sensor refresh).
+        vol = preset["volume_m3"] if preset else None
+        data.chemistry, data.chemistry_recommendations = self._build_chemistry_diagnosis(vol)
 
         if preset is not None:
             svg_state = self._svg_state(pump_target, reason)
@@ -993,6 +1304,9 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # Backwash takes precedence over everything — pump must run.
         if data.backwash_active:
             return True, RUN_REASON_BACKWASH
+        # Maintenance (post-dosing) — pump ON, cell OFF.
+        if data.maintenance_active or self.mode == MODE_MAINTENANCE:
+            return True, RUN_REASON_MAINTENANCE
         # Winterization is the next-highest priority — everything off.
         if data.winterization_active:
             return False, RUN_REASON_WINTERIZATION
@@ -1044,6 +1358,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             return False, ELEC_BLOCK_NONE
         if data.backwash_active:
             return False, ELEC_BLOCK_BACKWASH
+        if data.maintenance_active or self.mode == MODE_MAINTENANCE:
+            return False, ELEC_BLOCK_MAINTENANCE
         if data.winterization_active:
             return False, ELEC_BLOCK_WINTERIZATION
         if self.mode == MODE_OFF:

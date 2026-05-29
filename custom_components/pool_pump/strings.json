@@ -106,9 +106,20 @@
           "auto": "Auto",
           "on": "On",
           "off": "Off",
-          "pump_only": "Pump only (cell off)"
+          "pump_only": "Pump only (cell off)",
+          "maintenance": "Maintenance (after dosing)"
         }
       }
+    },
+    "number": {
+      "chem_ph": {"name": "pH"},
+      "chem_free_chlorine": {"name": "Free chlorine"},
+      "chem_total_chlorine": {"name": "Total chlorine"},
+      "chem_tac": {"name": "Total alkalinity (TAC)"},
+      "chem_th": {"name": "Total hardness (TH)"},
+      "chem_cya": {"name": "Cyanuric acid (CYA)"},
+      "chem_salt": {"name": "Salt"},
+      "chem_orp": {"name": "ORP (redox)"}
     },
     "sensor": {
       "start_time": {

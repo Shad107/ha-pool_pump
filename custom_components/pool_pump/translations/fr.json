@@ -106,9 +106,20 @@
           "auto": "Auto",
           "on": "Marche forcée",
           "off": "Arrêt forcé",
-          "pump_only": "Pompe seule (cellule off)"
+          "pump_only": "Pompe seule (cellule off)",
+          "maintenance": "Maintenance (après dosage)"
         }
       }
+    },
+    "number": {
+      "chem_ph": {"name": "pH"},
+      "chem_free_chlorine": {"name": "Chlore libre"},
+      "chem_total_chlorine": {"name": "Chlore total"},
+      "chem_tac": {"name": "Alcalinité (TAC)"},
+      "chem_th": {"name": "Dureté (TH)"},
+      "chem_cya": {"name": "Stabilisant (CYA)"},
+      "chem_salt": {"name": "Sel"},
+      "chem_orp": {"name": "ORP (rédox)"}
     },
     "sensor": {
       "start_time": {

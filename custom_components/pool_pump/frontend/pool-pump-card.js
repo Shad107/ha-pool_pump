@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.10.1";
+const CARD_VERSION = "0.11.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -191,6 +191,7 @@ class PoolPumpCard extends HTMLElement {
           ${actionBtn("mdi:water-pump",  "Pompe seule", () => this._setMode("pump_only"), modeState === "pump_only")}
           ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off")}
           ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false)}
+          ${actionBtn("mdi:test-tube",   "Chimie",      () => this._openMaintenance(),     modeState === "maintenance")}
           ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false)}
         </div>
       </div>
@@ -203,7 +204,8 @@ class PoolPumpCard extends HTMLElement {
     btns[2].onclick = () => this._setMode("pump_only");
     btns[3].onclick = () => this._setMode("off");
     btns[4].onclick = () => this._backwash();
-    btns[5].onclick = () => this._refresh();
+    btns[5].onclick = () => this._openMaintenance();
+    btns[6].onclick = () => this._refresh();
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -323,6 +325,60 @@ class PoolPumpCard extends HTMLElement {
     }
   }
 
+  _openMaintenance() {
+    if (!this._hass) return;
+    const c = this._config;
+    const status = this._state(this._pick(c.status_entity));
+    if (!status || !status.attributes) {
+      alert("Sensor de statut indisponible — vérifie la config de la card.");
+      return;
+    }
+    const chemistry = status.attributes.chemistry || [];
+    const recos = status.attributes.chemistry_recommendations || [];
+
+    // Build modal DOM in the shadow root.
+    let modal = this.shadowRoot.querySelector(".pp-modal");
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.className = "pp-modal";
+    modal.innerHTML = renderMaintenanceModal(chemistry, recos);
+    this.shadowRoot.appendChild(modal);
+
+    // Close handlers
+    modal.querySelector(".pp-modal-close").onclick = () => modal.remove();
+    modal.querySelector(".pp-modal-backdrop").onclick = () => modal.remove();
+
+    // Save chemistry handler
+    modal.querySelector(".pp-save-chem").onclick = () => {
+      const payload = {};
+      modal.querySelectorAll("[data-chem-key]").forEach((el) => {
+        const v = parseFloat(el.value);
+        if (!Number.isNaN(v)) payload[el.dataset.chemKey] = v;
+      });
+      if (Object.keys(payload).length === 0) {
+        alert("Aucune valeur à enregistrer.");
+        return;
+      }
+      this._hass.callService("pool_pump", "set_chemistry", payload);
+      modal.remove();
+    };
+
+    // Recommendation apply buttons
+    modal.querySelectorAll("[data-apply-action]").forEach((btn) => {
+      btn.onclick = () => {
+        const dur = parseInt(btn.dataset.applyDuration, 10) || 180;
+        const action = btn.dataset.applyAction;
+        if (action === "maintenance") {
+          this._hass.callService("pool_pump", "maintenance_start", {
+            duration_minutes: dur,
+          });
+          modal.remove();
+        }
+      };
+    });
+  }
+
   getCardSize() {
     return 4;
   }
@@ -398,6 +454,66 @@ function cell(icon, label, value, entityId) {
         <span class="cell-value">${value}</span>
       </div>
     </div>`;
+}
+
+function renderMaintenanceModal(chemistry, recos) {
+  const sevColor = { critical: "#d32f2f", warning: "#f57c00", info: "#1976d2" };
+  const statusColor = { ok: "#4caf50", low: "#f57c00", high: "#d32f2f", unknown: "#9e9e9e" };
+
+  const rows = chemistry.map((c) => {
+    const dot = `<span class="pp-status-dot" style="background:${statusColor[c.status]}"></span>`;
+    const tgt = `cible ${c.target_low}–${c.target_high}`;
+    const cur = c.value === null ? "" : `value="${c.value}"`;
+    return `
+      <div class="pp-chem-row">
+        <div class="pp-chem-label">${dot}<span>${c.label}</span>
+          <span class="pp-chem-target">${tgt} ${c.unit}</span>
+        </div>
+        <input type="number" step="0.1" ${cur} data-chem-key="${c.key}"
+               placeholder="—" class="pp-chem-input"/>
+        <span class="pp-chem-unit">${c.unit}</span>
+      </div>`;
+  }).join("");
+
+  const recoBlocks = recos.length === 0
+    ? `<div class="pp-no-reco">✅ Tout est dans les clous. Continue en mode Auto.</div>`
+    : recos.map((r) => {
+        const sev = sevColor[r.severity] || "#666";
+        const dose = r.dose_g ? `${r.dose_g.toFixed(0)} g` :
+                     r.dose_ml ? `${r.dose_ml.toFixed(0)} mL` : "—";
+        const applyBtn = r.pump_action === "maintenance"
+          ? `<button class="pp-apply-btn" data-apply-action="maintenance"
+                     data-apply-duration="${r.pump_duration_min}">
+               Pompe ${(r.pump_duration_min / 60).toFixed(1)}h
+             </button>`
+          : "";
+        return `
+          <div class="pp-reco" style="border-left-color:${sev}">
+            <div class="pp-reco-title">${r.title}</div>
+            <div class="pp-reco-product">→ ${r.product} : <b>${dose}</b></div>
+            ${r.notes ? `<div class="pp-reco-notes">${r.notes}</div>` : ""}
+            ${applyBtn}
+          </div>`;
+      }).join("");
+
+  return `
+    <div class="pp-modal-backdrop"></div>
+    <div class="pp-modal-body">
+      <div class="pp-modal-header">
+        <span>🧪 Maintenance chimie</span>
+        <button class="pp-modal-close">✕</button>
+      </div>
+      <div class="pp-modal-section">
+        <div class="pp-section-title">Saisie / lecture</div>
+        ${rows}
+        <button class="pp-save-chem">Enregistrer & diagnostiquer</button>
+      </div>
+      <div class="pp-modal-section">
+        <div class="pp-section-title">Recommandations</div>
+        ${recoBlocks}
+      </div>
+    </div>
+  `;
 }
 
 function actionBtn(icon, label, _onclick, active) {
@@ -673,6 +789,52 @@ const STYLES = `
     0%   { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+
+  /* === Maintenance modal === */
+  .pp-modal { position: fixed; inset: 0; z-index: 9999; display: flex;
+    align-items: center; justify-content: center; }
+  .pp-modal-backdrop { position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.55); }
+  .pp-modal-body { position: relative; background: var(--card-background-color, white);
+    color: var(--primary-text-color, #111); border-radius: 16px; padding: 20px;
+    width: min(560px, 92vw); max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.35); }
+  .pp-modal-header { display: flex; justify-content: space-between;
+    align-items: center; font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  .pp-modal-close { background: none; border: none; font-size: 20px;
+    cursor: pointer; color: var(--secondary-text-color); }
+  .pp-modal-section { margin-bottom: 24px; }
+  .pp-section-title { font-size: 12px; font-weight: 700;
+    color: var(--secondary-text-color); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px; }
+  .pp-chem-row { display: grid;
+    grid-template-columns: 1fr auto 30px; gap: 8px; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid rgba(127,127,127,0.15); }
+  .pp-chem-label { display: flex; align-items: center; gap: 8px;
+    font-size: 13px; }
+  .pp-chem-target { color: var(--secondary-text-color); font-size: 11px;
+    margin-left: 6px; }
+  .pp-chem-input { width: 80px; padding: 6px 8px; border-radius: 6px;
+    border: 1px solid rgba(127,127,127,0.3); font-size: 13px;
+    text-align: right; background: var(--card-background-color, white);
+    color: var(--primary-text-color, #111); }
+  .pp-chem-unit { font-size: 11px; color: var(--secondary-text-color); }
+  .pp-status-dot { display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; }
+  .pp-save-chem { margin-top: 14px; padding: 10px 16px; border-radius: 10px;
+    background: var(--primary-color, #2196f3); color: white; border: none;
+    cursor: pointer; font-weight: 600; font-size: 13px; width: 100%; }
+  .pp-reco { border-left: 4px solid #1976d2; padding: 10px 14px;
+    margin-bottom: 10px; background: rgba(127,127,127,0.08); border-radius: 8px; }
+  .pp-reco-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .pp-reco-product { font-size: 12px; margin-bottom: 4px; }
+  .pp-reco-notes { font-size: 11px; color: var(--secondary-text-color);
+    font-style: italic; margin-bottom: 8px; }
+  .pp-apply-btn { padding: 6px 12px; border-radius: 6px;
+    background: var(--primary-color, #2196f3); color: white; border: none;
+    cursor: pointer; font-size: 12px; font-weight: 600; }
+  .pp-no-reco { padding: 16px; text-align: center;
+    color: var(--secondary-text-color); font-size: 13px; }
 `;
 
 // Guard double-define (HA's scoped-custom-element-registry sometimes

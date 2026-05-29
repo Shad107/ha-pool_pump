@@ -153,6 +153,30 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "forecast_temperature_max_24h": d.forecast_temperature_max_24h,
             "forecast_condition": d.forecast_condition,
             "forecast_preheat_active": d.forecast_preheat_active,
+            "maintenance_active": d.maintenance_active,
+            "maintenance_ends_at": (
+                d.maintenance_ends_at.isoformat() if d.maintenance_ends_at else None
+            ),
+            "chemistry": [
+                {
+                    "key": r.key, "label": r.label, "unit": r.unit,
+                    "value": r.value, "target": r.target,
+                    "target_low": r.target_low, "target_high": r.target_high,
+                    "status": r.status,
+                }
+                for r in d.chemistry
+            ],
+            "chemistry_recommendations": [
+                {
+                    "issue_key": r.issue_key, "severity": r.severity,
+                    "title": r.title, "product": r.product,
+                    "dose_g": r.dose_g, "dose_ml": r.dose_ml,
+                    "pump_action": r.pump_action,
+                    "pump_duration_min": r.pump_duration_min,
+                    "notes": r.notes,
+                }
+                for r in d.chemistry_recommendations
+            ],
             "runs": [
                 {"start": r.start.isoformat(), "end": r.end.isoformat()}
                 for r in d.runs
