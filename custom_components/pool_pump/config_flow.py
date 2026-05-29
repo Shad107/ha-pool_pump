@@ -182,6 +182,24 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
         hass, current.get(CONF_ELECTROLYZER_SWITCH)
     )
 
+    # Core temperature source — exposed in options too so users can
+    # switch between air model / water probe after install (e.g., when
+    # they finally install a Sonoff WTS01 + thermowell).
+    schema[
+        vol.Required(
+            CONF_TEMPERATURE_MODE,
+            default=mode,
+        )
+    ] = _temperature_mode_selector()
+    schema[
+        vol.Required(
+            CONF_TEMPERATURE_SENSOR,
+            description={"suggested_value": current.get(CONF_TEMPERATURE_SENSOR)},
+        )
+    ] = EntitySelector(
+        EntitySelectorConfig(domain=["sensor", "input_number"])
+    )
+
     # Preset selector is always shown — it drives the dashboard SVG and,
     # in air_model mode, the default tau.
     schema[
