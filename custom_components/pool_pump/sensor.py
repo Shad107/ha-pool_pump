@@ -166,6 +166,7 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
                 }
                 for r in d.chemistry
             ],
+            "mode_time_today": d.mode_time_today,
             "chemistry_recommendations": [
                 {
                     "issue_key": r.issue_key, "severity": r.severity,

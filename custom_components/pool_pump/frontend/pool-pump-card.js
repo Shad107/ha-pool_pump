@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.11.1";
+const CARD_VERSION = "0.11.2";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -137,6 +137,7 @@ class PoolPumpCard extends HTMLElement {
     const c = this._config;
     const pool = this._state(c.pool_entity);
     const status = this._state(this._pick(c.status_entity));
+    const modeTimes = (status && status.attributes && status.attributes.mode_time_today) || {};
     const mode = this._state(this._pick(c.mode_entity));
     const start = this._state(this._pick(c.start_entity));
     const end = this._state(this._pick(c.end_entity));
@@ -186,13 +187,13 @@ class PoolPumpCard extends HTMLElement {
         </div>
 
         <div class="actions">
-          ${actionBtn("mdi:play",        "Marche",      () => this._setMode("on"),        modeState === "on")}
-          ${actionBtn("mdi:autorenew",   "Auto",        () => this._setMode("auto"),      modeState === "auto")}
-          ${actionBtn("mdi:water-pump",  "Pompe seule", () => this._setMode("pump_only"), modeState === "pump_only")}
-          ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off")}
-          ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false)}
-          ${actionBtn("mdi:test-tube",   "Chimie",      () => this._openMaintenance(),     modeState === "maintenance")}
-          ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false)}
+          ${actionBtn("mdi:play",        "Marche",      () => this._setMode("on"),        modeState === "on",        modeTimes.on)}
+          ${actionBtn("mdi:autorenew",   "Auto",        () => this._setMode("auto"),      modeState === "auto",      modeTimes.auto)}
+          ${actionBtn("mdi:water-pump",  "Pompe seule", () => this._setMode("pump_only"), modeState === "pump_only", modeTimes.pump_only)}
+          ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off",       modeTimes.off)}
+          ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false,                    null)}
+          ${actionBtn("mdi:test-tube",   "Chimie",      () => this._openMaintenance(),     modeState === "maintenance", modeTimes.maintenance)}
+          ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false,                    null)}
         </div>
       </div>
     `;
@@ -516,12 +517,25 @@ function renderMaintenanceModal(chemistry, recos) {
   `;
 }
 
-function actionBtn(icon, label, _onclick, active) {
+function actionBtn(icon, label, _onclick, active, seconds) {
+  const time = seconds != null && seconds > 0
+    ? `<span class="btn-time">${fmtSeconds(seconds)}</span>`
+    : "";
   return `
     <button class="action-btn ${active ? "active" : ""}" title="${label}">
       <ha-icon icon="${icon}"></ha-icon>
       <span>${label}</span>
+      ${time}
     </button>`;
+}
+
+function fmtSeconds(sec) {
+  if (sec < 60) return `${Math.floor(sec)}s`;
+  const totalMin = Math.floor(sec / 60);
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
 }
 
 const STYLES = `
@@ -697,6 +711,13 @@ const STYLES = `
   }
   .action-btn ha-icon {
     --mdc-icon-size: 20px;
+  }
+  .btn-time {
+    font-size: 9px;
+    font-weight: 500;
+    opacity: 0.75;
+    margin-top: 1px;
+    letter-spacing: 0.2px;
   }
   .error {
     padding: 16px;

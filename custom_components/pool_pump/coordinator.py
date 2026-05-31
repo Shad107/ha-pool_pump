@@ -216,6 +216,7 @@ class PoolPumpData:
     maintenance_ends_at: datetime | None = None
     chemistry: list[ChemistryReading] = field(default_factory=list)
     chemistry_recommendations: list[ChemistryRecommendation] = field(default_factory=list)
+    mode_time_today: dict[str, float] = field(default_factory=dict)  # mode → seconds
 
 
 def compute_duration(
@@ -389,6 +390,10 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._maintenance_ends_at: datetime | None = None
         # Number entities (per chemistry key) registered by the number platform.
         self._chemistry_numbers: dict[str, "NumberEntity"] = {}
+        # Per-mode cumulative time today (seconds). Resets at midnight.
+        self._mode_time_today: dict[str, float] = {}
+        self._mode_time_date: str | None = None  # YYYY-MM-DD
+        self._last_mode_tick: datetime | None = None
         # One-shot timer used to refresh exactly when the post_start
         # margin expires, instead of waiting for the next 60-second tick.
         self._deferred_refresh_unsub = None
@@ -442,6 +447,15 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._last_energy_update = datetime.fromisoformat(last_energy)
             except ValueError:
                 self._last_energy_update = None
+        # Mode-time today
+        self._mode_time_today = dict(stored.get("mode_time_today") or {})
+        self._mode_time_date = stored.get("mode_time_date")
+        last_mt = stored.get("last_mode_tick")
+        if last_mt:
+            try:
+                self._last_mode_tick = datetime.fromisoformat(last_mt)
+            except ValueError:
+                self._last_mode_tick = None
         # Cell-hour accumulator
         self._cell_hours_total = float(stored.get("cell_hours_total") or 0.0)
         last_cell = stored.get("last_cell_update")
@@ -507,6 +521,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     for (t, d) in self._calibrations[-200:]
                 ],
                 "learned_offset": self._learned_offset,
+                "mode_time_today": self._mode_time_today,
+                "mode_time_date": self._mode_time_date,
+                "last_mode_tick": (
+                    self._last_mode_tick.isoformat()
+                    if self._last_mode_tick
+                    else None
+                ),
             }
         )
 
@@ -954,6 +975,24 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     async def _async_update_data(self) -> PoolPumpData:
         now = dt_util.now()
         data = PoolPumpData(mode=self.mode)
+
+        # Per-mode time accounting. Resets daily. Each tick contributes
+        # `dt` seconds to the current mode's bucket. dt is clamped so a
+        # long HA downtime doesn't poison the day's total.
+        today_key = now.date().isoformat()
+        if self._mode_time_date != today_key:
+            self._mode_time_today = {}
+            self._mode_time_date = today_key
+        if self._last_mode_tick is not None:
+            dt_sec = (now - self._last_mode_tick).total_seconds()
+            if 0 < dt_sec < 300:  # guard against gaps > 5 min
+                cur = self.mode or MODE_AUTO
+                self._mode_time_today[cur] = (
+                    self._mode_time_today.get(cur, 0.0) + dt_sec
+                )
+        self._last_mode_tick = now
+        data.mode_time_today = dict(self._mode_time_today)
+
         await self._read_weather_forecast(now)
         data.forecast_temperature_max_24h = self._forecast_cache.get("max_temp")
         data.forecast_condition = self._forecast_cache.get("condition")
