@@ -36,6 +36,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CHEM_PARAMS,
     COLD_THRESHOLD_CELSIUS,
+    ROUTINES,
     CONF_AUTOTUNE_ENABLED,
     CONF_AUTOTUNE_WINDOW_DAYS,
     CONF_BREAK_HOURS,
@@ -217,6 +218,7 @@ class PoolPumpData:
     chemistry: list[ChemistryReading] = field(default_factory=list)
     chemistry_recommendations: list[ChemistryRecommendation] = field(default_factory=list)
     mode_time_today: dict[str, float] = field(default_factory=dict)  # mode → seconds
+    active_routine: dict | None = None  # {key, label, ends_at, dose_info}
 
 
 def compute_duration(
@@ -385,9 +387,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._pump_last_off: datetime | None = None
         # Backwash mode: when active, pump ON + cell OFF until ends_at.
         self._backwash_ends_at: datetime | None = None
-        # Maintenance mode: same as backwash physically (pump ON + cell OFF)
-        # but used after chemical dosing. Auto-reverts to AUTO at ends_at.
-        self._maintenance_ends_at: datetime | None = None
+        # Generic mode timer: when this fires, mode reverts to AUTO.
+        # Used by maintenance_start, backwash (separately tracked), and
+        # the start_routine service for the preset chemistry routines.
+        self._mode_timer_ends_at: datetime | None = None
+        self._mode_timer_key: str | None = None  # routine key (display only)
+        self._mode_timer_dose_info: dict | None = None  # {product, dose_g, dose_ml, notes}
         # Number entities (per chemistry key) registered by the number platform.
         self._chemistry_numbers: dict[str, "NumberEntity"] = {}
         # Per-mode cumulative time today (seconds). Resets at midnight.
@@ -471,13 +476,16 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._backwash_ends_at = datetime.fromisoformat(bw)
             except ValueError:
                 self._backwash_ends_at = None
-        # Maintenance timer
-        mt = stored.get("maintenance_ends_at")
+        # Mode timer (generic routine auto-revert). Keep
+        # `maintenance_ends_at` for backward compat with v0.11.x stores.
+        mt = stored.get("mode_timer_ends_at") or stored.get("maintenance_ends_at")
         if mt:
             try:
-                self._maintenance_ends_at = datetime.fromisoformat(mt)
+                self._mode_timer_ends_at = datetime.fromisoformat(mt)
             except ValueError:
-                self._maintenance_ends_at = None
+                self._mode_timer_ends_at = None
+        self._mode_timer_key = stored.get("mode_timer_key")
+        self._mode_timer_dose_info = stored.get("mode_timer_dose_info")
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -511,11 +519,13 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     if self._backwash_ends_at
                     else None
                 ),
-                "maintenance_ends_at": (
-                    self._maintenance_ends_at.isoformat()
-                    if self._maintenance_ends_at
+                "mode_timer_ends_at": (
+                    self._mode_timer_ends_at.isoformat()
+                    if self._mode_timer_ends_at
                     else None
                 ),
+                "mode_timer_key": self._mode_timer_key,
+                "mode_timer_dose_info": self._mode_timer_dose_info,
                 "calibrations": [
                     {"t": t.isoformat(), "d": d}
                     for (t, d) in self._calibrations[-200:]
@@ -842,23 +852,93 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     def trigger_maintenance(self, duration_minutes: float) -> None:
         """Force pump ON + cell OFF for `duration_minutes`, then auto-revert.
 
-        Used after a chemical dosing operation to ensure proper mixing.
-        Mechanically identical to backwash but tracked separately so the
-        UI can show a "maintenance après dosage" state instead of
-        confusing the user with the filter cleaning vocabulary.
+        Convenience wrapper around the generic routine timer for the
+        explicit "I just dosed something, mix it" workflow.
         """
-        dur = float(duration_minutes)
-        self._maintenance_ends_at = dt_util.now() + timedelta(minutes=dur)
-        _LOGGER.info(
-            "Maintenance started: %.1f min (ends at %s)",
-            dur,
-            self._maintenance_ends_at,
+        self._start_timed_mode(
+            mode=MODE_MAINTENANCE,
+            duration_minutes=float(duration_minutes),
+            key="manual_maintenance",
         )
-        self.hass.async_create_task(self.async_request_refresh())
 
     def cancel_maintenance(self) -> None:
-        """Cancel an in-progress maintenance cycle."""
-        self._maintenance_ends_at = None
+        """Cancel an in-progress maintenance cycle (and any active routine)."""
+        self._mode_timer_ends_at = None
+        self._mode_timer_key = None
+        self._mode_timer_dose_info = None
+        if self.mode == MODE_MAINTENANCE:
+            self.mode = MODE_AUTO
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def start_routine(self, routine_key: str) -> dict | None:
+        """Start a preset routine (smart or manual).
+
+        Smart routines (shock_chlorine, ph_adjust, tac_adjust,
+        stabilizer_dissolve) pull the dose + duration from the live
+        chemistry diagnosis. Manual ones (boost_cell, mix) use the
+        hardcoded default duration.
+
+        Returns the dose_info dict (for confirmation display) or None
+        if the routine isn't applicable (e.g., shock_chlorine when
+        free chlorine is already OK).
+        """
+        meta = next((r for r in ROUTINES if r[0] == routine_key), None)
+        if meta is None:
+            _LOGGER.warning("Unknown routine: %s", routine_key)
+            return None
+        _, label, _icon, target_mode, default_min, smart_prefix, _fav = meta
+
+        dose_info: dict | None = None
+        duration_min = default_min
+
+        # For smart routines, look up the matching recommendation in the
+        # most recently computed diagnosis (data may be None on cold start).
+        if smart_prefix and self.data is not None:
+            for reco in self.data.chemistry_recommendations:
+                if reco.issue_key.startswith(smart_prefix):
+                    dose_info = {
+                        "product": reco.product,
+                        "dose_g": reco.dose_g,
+                        "dose_ml": reco.dose_ml,
+                        "notes": reco.notes,
+                        "title": reco.title,
+                    }
+                    if reco.pump_duration_min > 0:
+                        duration_min = reco.pump_duration_min
+                    break
+            if dose_info is None:
+                _LOGGER.info(
+                    "Routine %s requested but no matching reco — applying default",
+                    routine_key,
+                )
+
+        self._start_timed_mode(
+            mode=target_mode,
+            duration_minutes=duration_min,
+            key=routine_key,
+            dose_info=dose_info,
+        )
+        return dose_info
+
+    def _start_timed_mode(
+        self,
+        mode: str,
+        duration_minutes: float,
+        key: str,
+        dose_info: dict | None = None,
+    ) -> None:
+        """Set mode + arm the auto-revert-to-AUTO timer."""
+        self.mode = mode
+        self._mode_timer_ends_at = dt_util.now() + timedelta(minutes=duration_minutes)
+        self._mode_timer_key = key
+        self._mode_timer_dose_info = dose_info
+        _LOGGER.info(
+            "Routine %s started: mode=%s, %.0f min (ends %s)",
+            key,
+            mode,
+            duration_minutes,
+            self._mode_timer_ends_at,
+        )
         self.hass.async_create_task(self.async_request_refresh())
 
     def register_chemistry_number(self, key: str, entity) -> None:
@@ -1190,18 +1270,34 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.backwash_active = self._backwash_ends_at is not None
         data.backwash_ends_at = self._backwash_ends_at
 
-        # Maintenance timer (post-dosing mixing). Same physical effect as
-        # backwash (pump ON, cell OFF) but auto-reverts to MODE_AUTO at end.
+        # Generic routine timer: when it expires, revert to AUTO. Covers
+        # the manual maintenance_start workflow and the preset routines.
         if (
-            self._maintenance_ends_at is not None
-            and now >= self._maintenance_ends_at
+            self._mode_timer_ends_at is not None
+            and now >= self._mode_timer_ends_at
         ):
-            _LOGGER.info("Maintenance cycle ended — reverting to AUTO")
-            self._maintenance_ends_at = None
-            if self.mode == MODE_MAINTENANCE:
-                self.mode = MODE_AUTO
-        data.maintenance_active = self._maintenance_ends_at is not None
-        data.maintenance_ends_at = self._maintenance_ends_at
+            _LOGGER.info(
+                "Routine %s ended — reverting to AUTO",
+                self._mode_timer_key or "?",
+            )
+            self._mode_timer_ends_at = None
+            self._mode_timer_key = None
+            self._mode_timer_dose_info = None
+            self.mode = MODE_AUTO
+        # Maintenance flag = timer active AND we're physically in MAINTENANCE.
+        data.maintenance_active = (
+            self._mode_timer_ends_at is not None and self.mode == MODE_MAINTENANCE
+        )
+        data.maintenance_ends_at = (
+            self._mode_timer_ends_at if data.maintenance_active else None
+        )
+        if self._mode_timer_ends_at is not None:
+            data.active_routine = {
+                "key": self._mode_timer_key,
+                "mode": self.mode,
+                "ends_at": self._mode_timer_ends_at.isoformat(),
+                "dose_info": self._mode_timer_dose_info,
+            }
 
         # Winterization (month-range check)
         win_start = int(self.options.get(CONF_WINTERIZATION_START_MONTH, 0) or 0)

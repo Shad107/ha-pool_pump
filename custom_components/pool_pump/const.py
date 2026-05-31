@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.11.2"
+VERSION = "0.12.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -89,6 +89,26 @@ CHEM_PARAMS = [
 # Maintenance mode: pump forced ON + cell forced OFF for a duration,
 # then auto-revert to MODE_AUTO. Used after chemical dosing to mix.
 MODE_MAINTENANCE = "maintenance"
+
+# Preset routines: each one bundles a mode + a default duration. Smart
+# routines also pull the dose from the chemistry diagnosis. Order in
+# this list = order in the card popup. `favorite=True` → shown in the
+# top row; others go in the "Plus" expandable section.
+ROUTINES = [
+    # key, label_fr, icon, mode, default_min, smart_issue_prefix, favorite
+    ("shock_chlorine",      "Chlore choc",          "mdi:water-plus",
+        MODE_MAINTENANCE, 360, "free_chlorine_",  True),
+    ("boost_cell",          "Boost cellule",        "mdi:battery-charging",
+        MODE_ON,          120, None,              True),
+    ("mix",                 "Mix produit",          "mdi:circle-multiple",
+        MODE_MAINTENANCE, 120, None,              True),
+    ("ph_adjust",           "Ajuster pH",           "mdi:ph",
+        MODE_MAINTENANCE, 180, "ph_",             False),
+    ("tac_adjust",          "Ajuster TAC",          "mdi:flask",
+        MODE_MAINTENANCE, 180, "tac_",            False),
+    ("stabilizer_dissolve", "Dissoudre stabilisant","mdi:shield-sun",
+        MODE_MAINTENANCE, 1440, "cya_",           False),
+]
 
 DEFAULT_SMOOTHING_WINDOW_HOURS = 24.0
 DEFAULT_SOLAR_COEFFICIENT = 0.6  # °C / hour at full sun (P_solar = P_peak)

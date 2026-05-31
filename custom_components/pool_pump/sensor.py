@@ -16,6 +16,7 @@ from .const import (
     CONF_ELECTROLYZER_SWITCH,
     CONF_PUMP_POWER_SENSOR,
     DOMAIN,
+    ROUTINES,
 )
 from .coordinator import PoolPumpCoordinator
 from .entity import PoolPumpEntity
@@ -167,6 +168,15 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
                 for r in d.chemistry
             ],
             "mode_time_today": d.mode_time_today,
+            "active_routine": d.active_routine,
+            "available_routines": [
+                {
+                    "key": r[0], "label": r[1], "icon": r[2],
+                    "mode": r[3], "default_min": r[4],
+                    "smart": bool(r[5]), "favorite": r[6],
+                }
+                for r in ROUTINES
+            ],
             "chemistry_recommendations": [
                 {
                     "issue_key": r.issue_key, "severity": r.severity,

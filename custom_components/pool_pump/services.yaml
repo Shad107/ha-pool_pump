@@ -91,3 +91,22 @@ maintenance_start:
 maintenance_cancel:
   name: Cancel maintenance cycle
   description: Stop an in-progress maintenance cycle and return to AUTO immediately.
+
+start_routine:
+  name: Start a preset routine
+  description: Trigger one of the preset chemistry/pump routines (chlore choc, boost cellule, mix, etc.). Smart routines auto-compute their dose + duration from the live chemistry diagnosis.
+  fields:
+    routine_key:
+      name: Routine
+      description: Internal key of the routine
+      required: true
+      example: shock_chlorine
+      selector:
+        select:
+          options:
+            - shock_chlorine
+            - boost_cell
+            - mix
+            - ph_adjust
+            - tac_adjust
+            - stabilizer_dissolve

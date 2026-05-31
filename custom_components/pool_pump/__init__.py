@@ -149,6 +149,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 c.cancel_maintenance()
 
         hass.services.async_register(DOMAIN, "maintenance_cancel", _maint_cancel)
+
+    if not hass.services.has_service(DOMAIN, "start_routine"):
+        async def _start_routine(call):
+            key = call.data.get("routine_key")
+            if not key:
+                _LOGGER.warning("start_routine called without routine_key")
+                return
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.start_routine(key)
+
+        hass.services.async_register(DOMAIN, "start_routine", _start_routine)
     return True
 
 

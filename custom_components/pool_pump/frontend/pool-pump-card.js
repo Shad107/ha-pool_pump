@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.11.2";
+const CARD_VERSION = "0.12.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -193,6 +193,7 @@ class PoolPumpCard extends HTMLElement {
           ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off",       modeTimes.off)}
           ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false,                    null)}
           ${actionBtn("mdi:test-tube",   "Chimie",      () => this._openMaintenance(),     modeState === "maintenance", modeTimes.maintenance)}
+          ${actionBtn("mdi:auto-fix",    "Routines",    () => this._openRoutines(),        false,                    null)}
           ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false,                    null)}
         </div>
       </div>
@@ -206,7 +207,8 @@ class PoolPumpCard extends HTMLElement {
     btns[3].onclick = () => this._setMode("off");
     btns[4].onclick = () => this._backwash();
     btns[5].onclick = () => this._openMaintenance();
-    btns[6].onclick = () => this._refresh();
+    btns[6].onclick = () => this._openRoutines();
+    btns[7].onclick = () => this._refresh();
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -323,6 +325,75 @@ class PoolPumpCard extends HTMLElement {
     if (!this._hass) return;
     if (confirm("Lancer un backwash filtre ? (pompe ON + cellule OFF pendant la durée configurée)")) {
       this._hass.callService("pool_pump", "backwash", {});
+    }
+  }
+
+  _openRoutines() {
+    if (!this._hass) return;
+    const c = this._config;
+    const status = this._state(this._pick(c.status_entity));
+    if (!status || !status.attributes) {
+      alert("Sensor de statut indisponible.");
+      return;
+    }
+    const routines = status.attributes.available_routines || [];
+    const recos = status.attributes.chemistry_recommendations || [];
+    const active = status.attributes.active_routine;
+
+    let modal = this.shadowRoot.querySelector(".pp-modal");
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.className = "pp-modal";
+    modal.innerHTML = renderRoutinesModal(routines, recos, active);
+    this.shadowRoot.appendChild(modal);
+
+    modal.querySelector(".pp-modal-close").onclick = () => modal.remove();
+    modal.querySelector(".pp-modal-backdrop").onclick = () => modal.remove();
+
+    // Toggle "Plus" expand
+    const moreBtn = modal.querySelector(".pp-routines-more");
+    const moreList = modal.querySelector(".pp-routines-more-list");
+    if (moreBtn && moreList) {
+      moreBtn.onclick = () => {
+        const open = moreList.style.display === "grid";
+        moreList.style.display = open ? "none" : "grid";
+        moreBtn.textContent = open ? "⋮ Plus" : "▲ Moins";
+      };
+    }
+
+    // Routine apply buttons
+    modal.querySelectorAll("[data-routine-key]").forEach((btn) => {
+      btn.onclick = () => {
+        const key = btn.dataset.routineKey;
+        const r = routines.find((x) => x.key === key);
+        if (!r) return;
+        const reco = r.smart
+          ? recos.find((x) => x.issue_key && x.issue_key.startsWith(routineSmartPrefix(key)))
+          : null;
+        const dose = reco
+          ? (reco.dose_g ? `${reco.dose_g.toFixed(0)} g de ${reco.product}`
+                         : reco.dose_ml ? `${reco.dose_ml.toFixed(0)} mL de ${reco.product}`
+                         : reco.product)
+          : null;
+        const dur = (reco && reco.pump_duration_min) || r.default_min;
+        const msg = dose
+          ? `${r.label} :\n→ ${dose}\n→ pompe ${fmtHours(dur)} puis retour Auto\n\nLancer ?`
+          : `${r.label} :\n→ ${r.smart ? "(aucune mesure récente, dose par défaut)\n" : ""}→ pompe ${fmtHours(dur)} puis retour Auto\n\nLancer ?`;
+        if (confirm(msg)) {
+          this._hass.callService("pool_pump", "start_routine", { routine_key: key });
+          modal.remove();
+        }
+      };
+    });
+
+    // Cancel active routine
+    const cancelBtn = modal.querySelector(".pp-routine-cancel");
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        this._hass.callService("pool_pump", "maintenance_cancel", {});
+        modal.remove();
+      };
     }
   }
 
@@ -455,6 +526,79 @@ function cell(icon, label, value, entityId) {
         <span class="cell-value">${value}</span>
       </div>
     </div>`;
+}
+
+function routineSmartPrefix(key) {
+  return ({
+    shock_chlorine: "free_chlorine_",
+    ph_adjust: "ph_",
+    tac_adjust: "tac_",
+    stabilizer_dissolve: "cya_",
+  })[key] || "";
+}
+
+function fmtHours(min) {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+}
+
+function renderRoutineCard(r, recos) {
+  const reco = r.smart
+    ? recos.find((x) => x.issue_key && x.issue_key.startsWith(routineSmartPrefix(r.key)))
+    : null;
+  const applicable = !r.smart || reco !== undefined && reco !== null;
+  const dose = reco
+    ? (reco.dose_g ? `${reco.dose_g.toFixed(0)} g`
+                   : reco.dose_ml ? `${reco.dose_ml.toFixed(0)} mL`
+                   : "")
+    : (r.smart ? "(pas de mesure récente)" : "");
+  const dur = (reco && reco.pump_duration_min) || r.default_min;
+  return `
+    <button class="pp-routine-card ${applicable ? '' : 'pp-routine-na'}"
+            data-routine-key="${r.key}"
+            title="${applicable ? '' : 'Calculé sur tes dernières mesures chimie'}">
+      <div class="pp-routine-label">${r.label}${r.smart ? ' <span class="pp-smart-tag">auto</span>' : ''}</div>
+      <div class="pp-routine-sub">
+        ${dose ? `<span>${dose}</span>` : ''}
+        <span>pompe ${fmtHours(dur)}</span>
+      </div>
+    </button>`;
+}
+
+function renderRoutinesModal(routines, recos, active) {
+  const favs = routines.filter((r) => r.favorite);
+  const more = routines.filter((r) => !r.favorite);
+
+  const activeBanner = active ? `
+    <div class="pp-routine-active">
+      <span>🟢 Routine <b>${active.key}</b> en cours · fin ${fmtTimeFromIso(active.ends_at)}</span>
+      <button class="pp-routine-cancel">Annuler</button>
+    </div>` : '';
+
+  const favHtml = favs.map((r) => renderRoutineCard(r, recos)).join("");
+  const moreHtml = more.map((r) => renderRoutineCard(r, recos)).join("");
+
+  return `
+    <div class="pp-modal-backdrop"></div>
+    <div class="pp-modal-body">
+      <div class="pp-modal-header">
+        <span>🔧 Routines</span>
+        <button class="pp-modal-close">✕</button>
+      </div>
+      ${activeBanner}
+      <div class="pp-routines-fav">${favHtml}</div>
+      <button class="pp-routines-more">⋮ Plus</button>
+      <div class="pp-routines-more-list" style="display:none">${moreHtml}</div>
+    </div>
+  `;
+}
+
+function fmtTimeFromIso(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch { return "—"; }
 }
 
 function renderMaintenanceModal(chemistry, recos) {
@@ -856,6 +1000,36 @@ const STYLES = `
     cursor: pointer; font-size: 12px; font-weight: 600; }
   .pp-no-reco { padding: 16px; text-align: center;
     color: var(--secondary-text-color); font-size: 13px; }
+
+  /* Routines modal */
+  .pp-routine-active { background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.5); padding: 10px 14px;
+    border-radius: 10px; display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 16px; font-size: 12px; }
+  .pp-routine-cancel { padding: 6px 12px; border-radius: 6px;
+    background: rgba(0,0,0,0.1); color: inherit; border: none;
+    cursor: pointer; font-size: 11px; font-weight: 600; }
+  .pp-routines-fav, .pp-routines-more-list {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px; margin-bottom: 12px; }
+  .pp-routine-card { padding: 12px; border-radius: 10px;
+    background: rgba(127,127,127,0.1); border: 1px solid rgba(127,127,127,0.2);
+    cursor: pointer; text-align: left; color: inherit;
+    transition: background 0.15s, transform 0.1s; }
+  .pp-routine-card:hover { background: rgba(33, 150, 243, 0.15); }
+  .pp-routine-card:active { transform: scale(0.97); }
+  .pp-routine-na { opacity: 0.55; }
+  .pp-routine-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .pp-routine-sub { display: flex; flex-wrap: wrap; gap: 8px;
+    font-size: 11px; color: var(--secondary-text-color); }
+  .pp-smart-tag { background: var(--primary-color, #2196f3); color: white;
+    padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.3px; vertical-align: middle; }
+  .pp-routines-more { padding: 8px; border-radius: 8px; background: none;
+    border: 1px dashed rgba(127,127,127,0.4); cursor: pointer;
+    color: var(--secondary-text-color); font-size: 12px; width: 100%;
+    margin-bottom: 8px; }
+  .pp-routines-more:hover { background: rgba(127,127,127,0.08); }
 `;
 
 // Guard double-define (HA's scoped-custom-element-registry sometimes
