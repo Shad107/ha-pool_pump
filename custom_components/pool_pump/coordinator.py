@@ -1214,7 +1214,6 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 solar_coefficient=k_sun,
             )
             self._last_model_update = now
-            await self._async_save_model()
             data.water_modeled_raw = self._water_modeled
             data.temperature_used = (
                 self._water_modeled + self._learned_offset
@@ -1422,6 +1421,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     self._cell_hours_total += dt_h
             self._last_cell_update = now
         data.cell_hours_total = self._cell_hours_total
+
+        # Persist accumulators every tick. Store batches writes (~10s
+        # debounce by HA itself) so this is cheap. Was previously only
+        # called inside the air_model branch, which meant users in
+        # water-probe mode lost their counters at every restart.
+        await self._async_save_model()
 
         return data
 
