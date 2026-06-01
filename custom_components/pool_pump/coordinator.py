@@ -1430,9 +1430,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if preset is not None:
             shape = preset.get("shape")
             if shape == "round":
-                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.svg"
+                # PNG since v0.13.4 — photorealistic above-ground frame
+                # pool illustrations. SVGs kept in the repo as fallback
+                # for users with `?legacy_svg=1` in the image URL config.
+                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.png"
             elif shape == "rect":
-                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_rect.svg"
+                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_rect.png"
 
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:
