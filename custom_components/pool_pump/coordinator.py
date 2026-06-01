@@ -1056,22 +1056,14 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         now = dt_util.now()
         data = PoolPumpData(mode=self.mode)
 
-        # Per-mode time accounting. Resets daily. Each tick contributes
-        # `dt` seconds to the current mode's bucket. dt is clamped so a
-        # long HA downtime doesn't poison the day's total.
+        # Per-mode "time the pump is actually doing work" accounting.
+        # Resets daily. The dt is only attributed once we know whether
+        # the pump is running this tick — see the block after the pump
+        # decision below. We just handle the date rollover here.
         today_key = now.date().isoformat()
         if self._mode_time_date != today_key:
             self._mode_time_today = {}
             self._mode_time_date = today_key
-        if self._last_mode_tick is not None:
-            dt_sec = (now - self._last_mode_tick).total_seconds()
-            if 0 < dt_sec < 300:  # guard against gaps > 5 min
-                cur = self.mode or MODE_AUTO
-                self._mode_time_today[cur] = (
-                    self._mode_time_today.get(cur, 0.0) + dt_sec
-                )
-        self._last_mode_tick = now
-        data.mode_time_today = dict(self._mode_time_today)
 
         await self._read_weather_forecast(now)
         data.forecast_temperature_max_24h = self._forecast_cache.get("max_temp")
@@ -1354,6 +1346,27 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.electrolyzer_should_be_on = elec_target
         data.electrolyzer_block_reason = elec_block
         data.reason = reason
+
+        # Per-mode time accounting: count only the seconds during which
+        # the pump is actually running. Off → counter stays 0. Auto →
+        # only the schedule run window contributes. Marche / Pompe seule
+        # / Maintenance → full duration, since the pump is forced on.
+        # Backwash gets its own bucket so its contribution doesn't bleed
+        # into whatever mode happened to be selected at the time.
+        if self._last_mode_tick is not None:
+            dt_sec = (now - self._last_mode_tick).total_seconds()
+            if 0 < dt_sec < 300:  # guard against gaps > 5 min
+                bucket: str | None = None
+                if data.backwash_active:
+                    bucket = "backwash"
+                elif pump_target:
+                    bucket = self.mode or MODE_AUTO
+                if bucket is not None:
+                    self._mode_time_today[bucket] = (
+                        self._mode_time_today.get(bucket, 0.0) + dt_sec
+                    )
+        self._last_mode_tick = now
+        data.mode_time_today = dict(self._mode_time_today)
 
         # Chemistry diagnosis (cheap, recomputed every tick; values only
         # change on user input or auto-sensor refresh).
