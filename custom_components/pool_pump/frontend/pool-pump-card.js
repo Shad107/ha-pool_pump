@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.12.3";
+const CARD_VERSION = "0.13.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -160,54 +160,84 @@ class PoolPumpCard extends HTMLElement {
     const title = c.title ?? pool.state ?? "Pool";
     const modeState = mode ? mode.state : "auto";
 
+    // Compact schedule line
+    const tempVal = temp ? parseFloat(temp.state) : null;
+    const tempStr = tempVal != null ? `${tempVal.toFixed(1)}°C` : "—";
+    const tempTone = tempToneFor(tempVal);
+    const power = this._state(this._pick(c.power_entity));
+    const energy = this._state(this._pick(c.energy_today_entity));
+    const powerVal = power ? parseFloat(power.state).toFixed(0) : null;
+    const energyVal = energy ? parseFloat(energy.state).toFixed(2) : null;
+    const startStr = fmtTime(start);
+    const endStr = fmtTime(end);
+    const durStr = duration ? `${parseFloat(duration.state).toFixed(1)}h` : "—";
+    const statusStr = status ? statusLabel(status.state) : "—";
+
     this._root.innerHTML = `
       <div class="card">
         <div class="header">
-          <ha-icon icon="mdi:pool"></ha-icon>
-          <span class="title">${title}</span>
-          ${heatwave && heatwave.state === "on" ? `<span class="badge heatwave">CANICULE</span>` : ""}
-          <span class="mode-pill mode-${modeState}" title="Mode actuel">${modeLabel(modeState)}</span>
+          <div class="header-left">
+            <ha-icon icon="mdi:pool"></ha-icon>
+            <span class="title">${title}</span>
+          </div>
+          <div class="header-right">
+            ${heatwave && heatwave.state === "on" ? `<span class="badge heatwave">🔥 CANICULE</span>` : ""}
+            <span class="mode-pill mode-${modeState}" title="Mode actuel">${modeLabel(modeState)}</span>
+          </div>
         </div>
 
         <div class="visual ${pumpTarget && pumpTarget.state === "on" ? "running" : ""}">
           ${imageUrl
             ? `<img class="pool-img" src="${imageUrl}" alt="Pool" />`
-            : (svg || `<div class="no-svg">No preset selected — pick a pool model in the integration options to enable the visual.</div>`)}
+            : (svg || `<div class="no-svg">No preset selected — pick a pool model in the integration options.</div>`)}
+          <div class="hero-overlay">
+            <div class="hero-temp ${tempTone}" data-entity="${this._pick(c.temperature_entity) || ""}">
+              <span class="hero-temp-value">${tempStr}</span>
+              <span class="hero-temp-label">T° eau</span>
+            </div>
+            <div class="hero-status" data-entity="${this._pick(c.status_entity) || ""}">
+              <span class="hero-status-value">${statusStr}</span>
+              ${powerVal != null ? `<span class="hero-status-meta">⚡ ${powerVal} W${energyVal != null ? ` · ${energyVal} kWh` : ""}</span>` : ""}
+            </div>
+          </div>
         </div>
 
         ${this._renderTimeline(status)}
 
-        <div class="schedule">
-          ${cell("mdi:clock-start", "Début", fmtTime(start), this._pick(c.start_entity))}
-          ${cell("mdi:clock-end", "Fin",    fmtTime(end), this._pick(c.end_entity))}
-          ${cell("mdi:timer-sand", "Durée", duration ? `${parseFloat(duration.state).toFixed(1)} h` : "—", this._pick(c.duration_entity))}
-          ${cell("mdi:thermometer", "T° eau", temp ? `${parseFloat(temp.state).toFixed(1)} °C` : "—", this._pick(c.temperature_entity))}
-          ${cell("mdi:state-machine", "État", status ? statusLabel(status.state) : "—", this._pick(c.status_entity))}
-          ${this._powerCells(c)}
+        <div class="schedule-strip">
+          <span class="strip-item"><ha-icon icon="mdi:clock-start"></ha-icon>${startStr}</span>
+          <span class="strip-sep">→</span>
+          <span class="strip-item"><ha-icon icon="mdi:clock-end"></ha-icon>${endStr}</span>
+          <span class="strip-sep">·</span>
+          <span class="strip-item"><ha-icon icon="mdi:timer-sand"></ha-icon>${durStr}</span>
         </div>
 
-        <div class="actions">
-          ${actionBtn("mdi:play",        "Marche",      () => this._setMode("on"),        modeState === "on",        modeTimes.on)}
-          ${actionBtn("mdi:autorenew",   "Auto",        () => this._setMode("auto"),      modeState === "auto",      modeTimes.auto)}
-          ${actionBtn("mdi:water-pump",  "Pompe seule", () => this._setMode("pump_only"), modeState === "pump_only", modeTimes.pump_only)}
-          ${actionBtn("mdi:stop",        "Arrêt",       () => this._setMode("off"),       modeState === "off",       modeTimes.off)}
-          ${actionBtn("mdi:filter",      "Backwash",    () => this._backwash(),            false,                    null)}
-          ${actionBtn("mdi:test-tube",   "Chimie",      () => this._openMaintenance(),     modeState === "maintenance", modeTimes.maintenance)}
-          ${actionBtn("mdi:auto-fix",    "Routines",    () => this._openRoutines(),        false,                    null)}
-          ${actionBtn("mdi:refresh",     "Refresh",     () => this._refresh(),             false,                    null)}
+        <div class="actions actions-modes">
+          ${actionBtn("mdi:autorenew",   "Auto",        null, modeState === "auto",      modeTimes.auto,      "tone-auto")}
+          ${actionBtn("mdi:play",        "Marche",      null, modeState === "on",        modeTimes.on,        "tone-on")}
+          ${actionBtn("mdi:water-pump",  "Pompe seule", null, modeState === "pump_only", modeTimes.pump_only, "tone-pump-only")}
+          ${actionBtn("mdi:stop",        "Arrêt",       null, modeState === "off",       modeTimes.off,       "tone-off")}
+        </div>
+
+        <div class="actions actions-utils">
+          ${actionBtn("mdi:auto-fix",    "Routines",    null, false,                       null,                 "tone-util")}
+          ${actionBtn("mdi:test-tube",   "Chimie",      null, modeState === "maintenance", modeTimes.maintenance, "tone-util")}
+          ${actionBtn("mdi:filter",      "Backwash",    null, false,                       null,                 "tone-util")}
+          ${actionBtn("mdi:refresh",     "Refresh",     null, false,                       null,                 "tone-util")}
         </div>
       </div>
     `;
 
-    // Bind the buttons (innerHTML lost handlers)
+    // Bind the buttons. New layout: modes row (Auto/Marche/Pompe/Arrêt)
+    // followed by utils row (Routines/Chimie/Backwash/Refresh).
     const btns = this._root.querySelectorAll(".action-btn");
-    btns[0].onclick = () => this._setMode("on");
-    btns[1].onclick = () => this._setMode("auto");
+    btns[0].onclick = () => this._setMode("auto");
+    btns[1].onclick = () => this._setMode("on");
     btns[2].onclick = () => this._setMode("pump_only");
     btns[3].onclick = () => this._setMode("off");
-    btns[4].onclick = () => this._backwash();
+    btns[4].onclick = () => this._openRoutines();
     btns[5].onclick = () => this._openMaintenance();
-    btns[6].onclick = () => this._openRoutines();
+    btns[6].onclick = () => this._backwash();
     btns[7].onclick = () => this._refresh();
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
@@ -661,16 +691,28 @@ function renderMaintenanceModal(chemistry, recos) {
   `;
 }
 
-function actionBtn(icon, label, _onclick, active, seconds) {
+function actionBtn(icon, label, _onclick, active, seconds, tone) {
   const time = seconds != null && seconds > 0
     ? `<span class="btn-time">${fmtSeconds(seconds)}</span>`
     : "";
+  const cls = ["action-btn"];
+  if (active) cls.push("active");
+  if (tone) cls.push(tone);
   return `
-    <button class="action-btn ${active ? "active" : ""}" title="${label}">
+    <button class="${cls.join(" ")}" title="${label}">
       <ha-icon icon="${icon}"></ha-icon>
-      <span>${label}</span>
+      <span class="btn-label">${label}</span>
       ${time}
     </button>`;
+}
+
+function tempToneFor(t) {
+  if (t == null) return "tone-neutral";
+  if (t < 15) return "tone-cold";       // cellule bloquée par le bas
+  if (t < 22) return "tone-cool";       // baignade fraîche
+  if (t <= 30) return "tone-comfort";   // zone confort
+  if (t <= 35) return "tone-warm";      // chaud
+  return "tone-hot";                    // limite haute cellule
 }
 
 function fmtSeconds(sec) {
@@ -684,67 +726,157 @@ function fmtSeconds(sec) {
 
 const STYLES = `
   :host {
+    --pp-blue: #03a9f4;
+    --pp-blue-deep: #0277bd;
+    --pp-green: #43a047;
+    --pp-amber: #fb8c00;
+    --pp-red: #e53935;
+    --pp-purple: #8e24aa;
+    --pp-bg-tint: rgba(3, 169, 244, 0.06);
     display: block;
   }
   ha-card {
-    padding: 16px;
+    padding: 14px;
     display: block;
   }
   .card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
+
+  /* ---------- Header ---------- */
   .header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
   }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .header ha-icon {
     --mdc-icon-size: 22px;
-    color: var(--primary-color);
+    color: var(--pp-blue);
   }
   .title {
     font-size: 16px;
-    font-weight: 600;
-    flex-grow: 1;
+    font-weight: 700;
+    color: var(--primary-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .badge {
-    background: #ff7043;
     color: white;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 10px;
     font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
   }
   .badge.heatwave {
-    animation: pulse 2s ease-in-out infinite;
+    background: linear-gradient(135deg, #ff6f00 0%, #f4511e 100%);
+    box-shadow: 0 2px 6px rgba(244, 81, 30, 0.35);
+    animation: pulse 2.4s ease-in-out infinite;
   }
   .mode-pill {
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 11px;
-    font-weight: 600;
-    background: var(--secondary-background-color);
-    color: var(--primary-text-color);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: white;
+    background: rgba(127,127,127,0.4);
   }
-  .mode-pill.mode-on   { background: #2196f3; color: white; }
-  .mode-pill.mode-auto { background: #4caf50; color: white; }
-  .mode-pill.mode-off  { background: #757575; color: white; }
+  .mode-pill.mode-auto         { background: linear-gradient(135deg, #43a047, #2e7d32); }
+  .mode-pill.mode-on           { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+  .mode-pill.mode-pump_only    { background: linear-gradient(135deg, #fb8c00, #e65100); }
+  .mode-pill.mode-off          { background: linear-gradient(135deg, #757575, #424242); }
+  .mode-pill.mode-maintenance  { background: linear-gradient(135deg, #8e24aa, #5e35b1); }
+  /* ---------- Visual (pool image + hero stats) ---------- */
   .visual {
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
-    background: var(--secondary-background-color);
+    background: linear-gradient(180deg, #e1f5fe 0%, #b3e5fc 100%);
     padding: 8px;
     position: relative;
+    box-shadow: inset 0 0 0 1px rgba(3, 169, 244, 0.15);
   }
   .visual svg, .visual .pool-img {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 10px;
+  }
+  .hero-overlay {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 8px 6px 2px 6px;
+    gap: 8px;
+  }
+  .hero-temp {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .hero-temp-value {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .hero-temp-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--secondary-text-color);
+    margin-top: 2px;
+    letter-spacing: 0.4px;
+  }
+  .hero-temp.tone-cold    .hero-temp-value { color: #1565c0; }
+  .hero-temp.tone-cool    .hero-temp-value { color: #0288d1; }
+  .hero-temp.tone-comfort .hero-temp-value { color: #00897b; }
+  .hero-temp.tone-warm    .hero-temp-value { color: #ef6c00; }
+  .hero-temp.tone-hot     .hero-temp-value { color: #c62828; }
+  .hero-temp.tone-neutral .hero-temp-value { color: var(--primary-text-color); }
+
+  .hero-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .hero-status-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pp-blue-deep);
+  }
+  .hero-status-meta {
+    font-size: 11px;
+    color: var(--secondary-text-color);
+    margin-top: 2px;
   }
   .visual.running .pool-img {
     animation: gentle-shimmer 4s ease-in-out infinite;
@@ -823,46 +955,97 @@ const STYLES = `
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* ---------- Action rows ---------- */
   .actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
+  }
+  .actions-utils {
+    margin-top: -2px;
   }
   .action-btn {
     background: var(--secondary-background-color);
     border: 1px solid transparent;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 10px 4px;
     cursor: pointer;
     color: var(--primary-text-color);
     font-size: 11px;
+    font-weight: 600;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    transition: background 0.15s, transform 0.1s;
+    gap: 3px;
+    transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+  }
+  .action-btn ha-icon {
+    --mdc-icon-size: 20px;
+    color: var(--secondary-text-color);
+    transition: color 0.15s;
   }
   .action-btn:hover {
-    background: var(--primary-color);
-    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.10);
   }
   .action-btn:active {
     transform: scale(0.96);
   }
-  .action-btn.active {
-    background: var(--primary-color);
-    color: white;
-  }
-  .action-btn ha-icon {
-    --mdc-icon-size: 20px;
-  }
+  .btn-label { letter-spacing: 0.2px; }
   .btn-time {
     font-size: 9px;
-    font-weight: 500;
-    opacity: 0.75;
-    margin-top: 1px;
+    font-weight: 600;
+    opacity: 0.72;
+    margin-top: 0;
     letter-spacing: 0.2px;
   }
+
+  /* Mode-row tones (only colorize on hover; active gets full color) */
+  .action-btn.tone-auto:hover       ha-icon { color: var(--pp-green); }
+  .action-btn.tone-on:hover         ha-icon { color: var(--pp-blue); }
+  .action-btn.tone-pump-only:hover  ha-icon { color: var(--pp-amber); }
+  .action-btn.tone-off:hover        ha-icon { color: var(--pp-red); }
+
+  .action-btn.active.tone-auto {
+    background: linear-gradient(135deg, rgba(67,160,71,0.18), rgba(46,125,50,0.10));
+    border-color: rgba(67,160,71,0.45);
+    color: #1b5e20;
+  }
+  .action-btn.active.tone-auto ha-icon { color: var(--pp-green); }
+  .action-btn.active.tone-on {
+    background: linear-gradient(135deg, rgba(30,136,229,0.18), rgba(21,101,192,0.10));
+    border-color: rgba(30,136,229,0.45);
+    color: #0d47a1;
+  }
+  .action-btn.active.tone-on ha-icon { color: var(--pp-blue); }
+  .action-btn.active.tone-pump-only {
+    background: linear-gradient(135deg, rgba(251,140,0,0.20), rgba(230,81,0,0.10));
+    border-color: rgba(251,140,0,0.45);
+    color: #bf360c;
+  }
+  .action-btn.active.tone-pump-only ha-icon { color: var(--pp-amber); }
+  .action-btn.active.tone-off {
+    background: linear-gradient(135deg, rgba(117,117,117,0.20), rgba(66,66,66,0.10));
+    border-color: rgba(117,117,117,0.45);
+    color: var(--primary-text-color);
+  }
+  .action-btn.active.tone-off ha-icon { color: var(--pp-red); }
+
+  /* Utility row (less prominent) */
+  .actions-utils .action-btn {
+    background: transparent;
+    border-color: rgba(127,127,127,0.20);
+    font-size: 10.5px;
+  }
+  .actions-utils .action-btn ha-icon {
+    --mdc-icon-size: 18px;
+  }
+  .actions-utils .action-btn.active {
+    background: linear-gradient(135deg, rgba(142,36,170,0.16), rgba(94,53,177,0.10));
+    border-color: rgba(142,36,170,0.45);
+    color: #4a148c;
+  }
+  .actions-utils .action-btn.active ha-icon { color: var(--pp-purple); }
   .error {
     padding: 16px;
     color: var(--error-color);
@@ -896,51 +1079,81 @@ const STYLES = `
   .placeholder-subtitle {
     font-size: 12px;
   }
-  /* Timeline (24h day strip with runs + now marker) */
+  /* ---------- Timeline ---------- */
   .timeline {
-    background: var(--secondary-background-color);
+    background: var(--pp-bg-tint);
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    border: 1px solid rgba(3,169,244,0.10);
   }
   .timeline-bar {
     position: relative;
-    height: 14px;
-    background: rgba(127, 127, 127, 0.15);
-    border-radius: 7px;
+    height: 12px;
+    background: rgba(127, 127, 127, 0.18);
+    border-radius: 6px;
     overflow: visible;
   }
   .timeline-run {
     position: absolute;
     top: 0;
     bottom: 0;
-    background: linear-gradient(180deg, #66bb6a, #388e3c);
+    background: linear-gradient(180deg, #66bb6a, #2e7d32);
     border-radius: 3px;
-    box-shadow: 0 0 4px rgba(76, 175, 80, 0.4);
+    box-shadow: 0 1px 4px rgba(46, 125, 50, 0.35);
   }
   .timeline-now {
     position: absolute;
     top: -3px;
     bottom: -3px;
     width: 2px;
-    background: var(--primary-color, #2196f3);
+    background: var(--pp-blue);
     border-radius: 1px;
-    box-shadow: 0 0 6px var(--primary-color, #2196f3);
+    box-shadow: 0 0 8px var(--pp-blue);
   }
   .timeline-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
+    font-size: 9px;
     color: var(--secondary-text-color);
+    font-weight: 500;
   }
   .timeline-extras {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     font-size: 11px;
     color: var(--secondary-text-color);
     margin-top: 2px;
+  }
+
+  /* ---------- Compact schedule strip ---------- */
+  .schedule-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    padding: 6px 10px;
+    background: rgba(127,127,127,0.06);
+    border-radius: 10px;
+  }
+  .strip-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
+  .strip-item ha-icon {
+    --mdc-icon-size: 14px;
+    color: var(--pp-blue);
+  }
+  .strip-sep {
+    color: var(--secondary-text-color);
+    opacity: 0.5;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
