@@ -945,6 +945,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         """Track a number entity so the coordinator can read its value."""
         self._chemistry_numbers[key] = entity
 
+    def reset_mode_time(self) -> None:
+        """Wipe the per-mode time accumulators for today.
+
+        Useful right after upgrading from a version with the v0.12.2 /
+        v0.12.3 accounting bugs, when the counter carries forward a
+        bogus history. Resets to zero, the next pump-on tick starts
+        the fresh accumulation.
+        """
+        self._mode_time_today = {}
+        self._mode_time_date = dt_util.now().date().isoformat()
+        _LOGGER.info("mode_time_today reset")
+        self.hass.async_create_task(self._async_save_model())
+        self.hass.async_create_task(self.async_request_refresh())
+
     def _read_chemistry_value(self, key: str) -> float | None:
         """Resolve a chemistry reading: sensor override > number entity."""
         sensor_id = self.options.get(f"chem_{key}_sensor")

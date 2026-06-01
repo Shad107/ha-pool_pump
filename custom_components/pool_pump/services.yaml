@@ -110,3 +110,7 @@ start_routine:
             - ph_adjust
             - tac_adjust
             - stabilizer_dissolve
+
+reset_mode_time:
+  name: Reset mode_time_today counters
+  description: Wipe the per-mode time counters back to zero. Useful right after upgrading from a buggy version (≤ v0.12.2) that polluted the counters.

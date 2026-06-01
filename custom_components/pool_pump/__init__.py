@@ -160,6 +160,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 c.start_routine(key)
 
         hass.services.async_register(DOMAIN, "start_routine", _start_routine)
+
+    if not hass.services.has_service(DOMAIN, "reset_mode_time"):
+        async def _reset_mode_time(_call):
+            for c in hass.data.get(DOMAIN, {}).values():
+                c.reset_mode_time()
+
+        hass.services.async_register(DOMAIN, "reset_mode_time", _reset_mode_time)
     return True
 
 
