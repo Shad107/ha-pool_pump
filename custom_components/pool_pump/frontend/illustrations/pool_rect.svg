@@ -1,102 +1,209 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Rectangular above-ground pool — hand-drawn in the style of openclipart 316492
-     (CC0). Same color palette so it pairs visually with pool_round.svg. -->
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="620" height="366" viewBox="0 0 620 366">
-  <defs>
-    <linearGradient id="water_rect" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#5BB1CE"/>
-      <stop offset="50%" stop-color="#3899B8"/>
-      <stop offset="100%" stop-color="#2586A6"/>
-    </linearGradient>
-    <linearGradient id="front_rect" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2B8DAD"/>
-      <stop offset="100%" stop-color="#1A6584"/>
-    </linearGradient>
-    <linearGradient id="side_rect" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#1A6584"/>
-      <stop offset="100%" stop-color="#2B8DAD"/>
-    </linearGradient>
-    <linearGradient id="grass_rect" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#C5D853"/>
-      <stop offset="100%" stop-color="#9DB832"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Grass background (full canvas, slightly darker at the bottom) -->
-  <rect x="0" y="0" width="620" height="366" fill="url(#grass_rect)"/>
-
-  <!-- Soft shadow on the grass beneath the pool -->
-  <ellipse cx="310" cy="305" rx="280" ry="22" fill="#000" opacity="0.18"/>
-
-  <!-- Left side wall (parallelogram, perspective receding upper-left) -->
-  <polygon points="20,120 110,210 110,290 20,200" fill="url(#side_rect)"/>
-
-  <!-- Front face wall — vertical rectangle below the water front edge -->
-  <polygon points="110,210 530,210 530,290 110,290" fill="url(#front_rect)"/>
-
-  <!-- Top coping rail (light beige band, visible all around the rim) -->
-  <polygon points="20,120 530,120 600,210 530,210 110,210 20,210"
-           fill="#EDE5D2" stroke="#C9BC9A" stroke-width="1.4"
-           opacity="0"/>
-  <!-- Concrete coping outline (thin white-ish band on top of the wall edges) -->
-  <polygon points="20,120 530,120 600,210 110,210"
-           fill="none" stroke="#F3EDDF" stroke-width="4"/>
-
-  <!-- Water surface (parallelogram inside the coping) -->
-  <polygon points="30,128 525,128 590,205 118,205" fill="url(#water_rect)"/>
-
-  <!-- Mosaic tile dashed band hugging the inner edge of the water -->
-  <polygon points="40,135 518,135 580,200 130,200"
-           fill="none" stroke="#1F84BD" stroke-width="2.5"
-           stroke-dasharray="8 3" opacity="0.85"/>
-
-  <!-- Water highlights: a few thin white waves to suggest movement -->
-  <g stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.55">
-    <path d="M 180 155 q 35 -6 70 0 t 70 0"/>
-    <path d="M 240 175 q 32 -5 64 0 t 64 0"/>
-    <path d="M 300 190 q 30 -4 60 0 t 60 0"/>
-  </g>
-
-  <!-- Sun glint (white ellipse in the upper-left area of the water) -->
-  <ellipse cx="170" cy="160" rx="50" ry="8" fill="#FFFFFF"
-           opacity="0.35" transform="rotate(-8 170 160)"/>
-  <ellipse cx="155" cy="155" rx="14" ry="3" fill="#FFFFFF"
-           opacity="0.6" transform="rotate(-8 155 155)"/>
-
-  <!-- Vertical metal posts on the visible front face -->
-  <g fill="#2586A6">
-    <rect x="105" y="118" width="10" height="172" rx="2"/>
-    <rect x="525" y="118" width="10" height="172" rx="2"/>
-    <rect x="313" y="118" width="8" height="172" rx="2"/>
-  </g>
-
-  <!-- Back-left and back-right posts following the side wall perspective.
-       Drawn as oblique parallelograms going from top edge down. -->
-  <polygon points="18,118 26,118 116,208 108,208 108,290 100,290 100,208"
-           fill="#2586A6"/>
-
-  <!-- White rim of each front post for a chrome highlight -->
-  <g fill="#FFFFFF" opacity="0.65">
-    <rect x="105" y="118" width="3" height="172"/>
-    <rect x="525" y="118" width="3" height="172"/>
-    <rect x="313" y="118" width="2" height="172"/>
-  </g>
-
-  <!-- Top rail (horizontal silver band across the top of the front edge) -->
-  <rect x="30" y="120" width="510" height="6" fill="#D7DEE3" stroke="#9AA5AC" stroke-width="0.8" rx="2"/>
-
-  <!-- Ladder on the right edge of the front wall -->
-  <g stroke="#D6DCE0" stroke-width="3" fill="none" stroke-linecap="round">
-    <line x1="552" y1="115" x2="552" y2="318"/>
-    <line x1="566" y1="115" x2="566" y2="318"/>
-    <line x1="552" y1="130" x2="566" y2="130"/>
-    <line x1="552" y1="170" x2="566" y2="170"/>
-    <line x1="552" y1="210" x2="566" y2="210"/>
-    <line x1="552" y1="250" x2="566" y2="250"/>
-    <line x1="552" y1="290" x2="566" y2="290"/>
-  </g>
-  <g stroke="#9AA5AC" stroke-width="0.8" fill="none">
-    <line x1="554" y1="115" x2="554" y2="318" opacity="0.6"/>
-    <line x1="568" y1="115" x2="568" y2="318" opacity="0.6"/>
-  </g>
-</svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:cc="http://web.resource.org/cc/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:ns1="http://sozi.baierouge.fr"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    id="svg2"
+    sodipodi:docname="swimming pool.svg"
+    viewBox="0 0 403.86 238.14"
+    sodipodi:version="0.32"
+    version="1.0"
+    inkscape:output_extension="org.inkscape.output.svg.inkscape"
+    inkscape:version="0.45.1"
+    sodipodi:docbase="C:\Documents and Settings\Bianca\Desktop"
+  >
+  <sodipodi:namedview
+      id="base"
+      bordercolor="#666666"
+      inkscape:pageshadow="2"
+      inkscape:guide-bbox="true"
+      pagecolor="#ffffff"
+      inkscape:window-height="811"
+      inkscape:zoom="1.4"
+      inkscape:window-x="-4"
+      borderopacity="1.0"
+      inkscape:current-layer="layer1"
+      inkscape:cx="138.40283"
+      inkscape:cy="130.39066"
+      showguides="true"
+      inkscape:window-y="-4"
+      inkscape:window-width="1152"
+      inkscape:pageopacity="0.0"
+      inkscape:document-units="px"
+  />
+  <g
+      id="layer1"
+      inkscape:label="Camada 1"
+      inkscape:groupmode="layer"
+      transform="translate(-88.964 -177.22)"
+    >
+    <g
+        id="g9011"
+      >
+      <path
+          id="path4128"
+          style="fill-rule:evenodd;fill:#dde6dc"
+          d="m340.91 177.72l-251.44 105 82.84 132.16 320-186.44-151.4-50.72zm-0.22 7.78l130.81 44.09-290.84 166.13-72.91-111.31 232.94-98.91z"
+      />
+      <path
+          id="path2186"
+          class="pool-water"
+          style="fill-rule:evenodd;fill:#51badc"
+          d="m114.46 294.33l226.16-96.52 115.85 40.31-275.67 157.5-66.34-101.29z"
+      />
+      <path
+          id="path2170"
+          style="stroke:#000000;stroke-width:1px;fill:none"
+          d="m89.464 282.72l82.856 132.14 320-186.43-151.43-50.71-251.43 105z"
+      />
+      <path
+          id="path8040"
+          sodipodi:nodetypes="ccccccc"
+          style="fill-rule:evenodd;fill:#aac1a8"
+          d="m107.86 284.33l232.76-98.75 130.81 43.93-15 8.66-115.72-40.36-225.84 97.41-7.01-10.89z"
+      />
+      <path
+          id="path2172"
+          sodipodi:nodetypes="ccccc"
+          style="stroke:#000000;stroke-width:.91079px;fill:none"
+          d="m107.76 284.39l72.89 111.32 290.84-166.11-130.81-44.09-232.92 98.88z"
+      />
+      <path
+          id="path2174"
+          sodipodi:nodetypes="cccc"
+          style="stroke:#000000;stroke-width:1px;fill:none"
+          d="m114.82 295.22l225.9-97.38 115.71 40.24"
+      />
+      <path
+          id="path2176"
+          sodipodi:nodetypes="cc"
+          style="stroke:#000000;stroke-width:1px;fill:none"
+          d="m340.72 198.06v-12.2"
+      />
+      <path
+          id="path2184"
+          sodipodi:nodetypes="csssscscsscsss"
+          style="fill-rule:evenodd;stroke:#000000;stroke-width:1px;fill:#b7b7b7"
+          d="m342.81 310.33c0.39 1.89 5.67 1.26 6.22-1.15 1.07-4.7 2.61-9.47 2.69-14.33 0.04-2.23-1.65-4.46-3.64-5.35-3.88-1.71-7.99-2.97-12.05-4.24-3.12-0.98-6.45-1.62-9.65-1.72-4.76 0.17-6.47 5.87-7.3 10.06-1.58 7.88-3.23 19.88-4.75 27.78 1.34 1.32 5.06 1.32 5.31-0.88 0.29-2.6 0.91-9.18 1.4-11.76 1.06-5.64 1.87-11.38 3.42-16.89 3.39-5.59 13.25-0.86 17.99 0.98 1.71 0.66 3.18 2.39 2.58 4.71-1.08 4.14-2.97 9.13-2.22 12.79z"
+      />
+      <path
+          id="path2178"
+          sodipodi:nodetypes="csssscscsscsss"
+          style="fill-rule:evenodd;stroke:#000000;stroke-width:1px;fill:#b7b7b7"
+          d="m324.13 321.36c0.39 1.89 5.67 1.26 6.22-1.15 1.07-4.7 2.62-9.47 2.69-14.33 0.04-2.23-1.65-4.47-3.64-5.35-3.88-1.71-7.99-2.97-12.05-4.24-3.12-0.98-6.45-1.62-9.64-1.72-4.77 0.17-6.48 5.86-7.31 10.06-1.58 7.88-3.23 19.88-4.75 27.78 1.34 1.32 5.07 1.32 5.31-0.88 0.29-2.6 0.91-9.18 1.4-11.76 1.06-5.64 1.87-11.38 3.42-16.89 3.39-5.59 13.25-0.86 18 0.98 1.7 0.65 3.17 2.39 2.57 4.71-1.08 4.14-2.97 9.13-2.22 12.79z"
+      />
+      <path
+          id="path5111"
+          sodipodi:nodetypes="cccc"
+          style="fill-rule:evenodd;fill:#dde6dc"
+          d="m295.05 341.11l29.07-16.36-1.76-9.97-27.63 16.03"
+      />
+      <path
+          id="path5131"
+          sodipodi:nodetypes="cc"
+          style="stroke:#000000;stroke-width:.91079px;fill:none"
+          d="m294.09 330.92l28.68-16.38"
+      />
+    </g
+    >
+  </g
+  >
+  <metadata
+    >
+    <rdf:RDF
+      >
+      <cc:Work
+        >
+        <dc:format
+          >image/svg+xml</dc:format
+        >
+        <dc:type
+            rdf:resource="http://purl.org/dc/dcmitype/StillImage"
+        />
+        <cc:license
+            rdf:resource="http://creativecommons.org/licenses/publicdomain/"
+        />
+        <dc:publisher
+          >
+          <cc:Agent
+              rdf:about="http://openclipart.org/"
+            >
+            <dc:title
+              >Openclipart</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:publisher
+        >
+        <dc:title
+          >Swimming pool</dc:title
+        >
+        <dc:date
+          >2010-06-15T20:02:44</dc:date
+        >
+        <dc:description
+          >A swimming pool, with a swimming pool ladder.</dc:description
+        >
+        <dc:source
+          >https://openclipart.org/detail/66985/swimming-pool-by-laobc-66985</dc:source
+        >
+        <dc:creator
+          >
+          <cc:Agent
+            >
+            <dc:title
+              >laobc</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:creator
+        >
+        <dc:subject
+          >
+          <rdf:Bag
+            >
+            <rdf:li
+              >ladder</rdf:li
+            >
+            <rdf:li
+              >pool ladder</rdf:li
+            >
+            <rdf:li
+              >summer</rdf:li
+            >
+            <rdf:li
+              >swimming pool ladder</rdf:li
+            >
+          </rdf:Bag
+          >
+        </dc:subject
+        >
+      </cc:Work
+      >
+      <cc:License
+          rdf:about="http://creativecommons.org/licenses/publicdomain/"
+        >
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Reproduction"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Distribution"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#DerivativeWorks"
+        />
+      </cc:License
+      >
+    </rdf:RDF
+    >
+  </metadata
+  >
+</svg
+>

@@ -1,7 +1,7 @@
 {
   "domain": "pool_pump",
   "name": "Pool Pump Manager",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "documentation": "https://github.com/Shad107/ha-pool_pump",
   "issue_tracker": "https://github.com/Shad107/ha-pool_pump/issues",
   "codeowners": ["@Shad107"],
