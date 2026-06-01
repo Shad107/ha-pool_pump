@@ -486,6 +486,23 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 self._mode_timer_ends_at = None
         self._mode_timer_key = stored.get("mode_timer_key")
         self._mode_timer_dose_info = stored.get("mode_timer_dose_info")
+        # Pump continuous-on tracker: persist across restarts so the
+        # cell margin doesn't reset every reboot. Without this, HA
+        # restart → tracker None → first tick falls back to
+        # pump.last_changed (which HA itself resets at restart) → the
+        # cell gets force-cycled OFF for ~post_start_delay seconds.
+        pcos = stored.get("pump_continuous_on_since")
+        if pcos:
+            try:
+                self._pump_continuous_on_since = datetime.fromisoformat(pcos)
+            except ValueError:
+                self._pump_continuous_on_since = None
+        plo = stored.get("pump_last_off")
+        if plo:
+            try:
+                self._pump_last_off = datetime.fromisoformat(plo)
+            except ValueError:
+                self._pump_last_off = None
 
     async def _async_save_model(self) -> None:
         await self._store.async_save(
@@ -526,6 +543,16 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 ),
                 "mode_timer_key": self._mode_timer_key,
                 "mode_timer_dose_info": self._mode_timer_dose_info,
+                "pump_continuous_on_since": (
+                    self._pump_continuous_on_since.isoformat()
+                    if self._pump_continuous_on_since
+                    else None
+                ),
+                "pump_last_off": (
+                    self._pump_last_off.isoformat()
+                    if self._pump_last_off
+                    else None
+                ),
                 "calibrations": [
                     {"t": t.isoformat(), "d": d}
                     for (t, d) in self._calibrations[-200:]
@@ -1551,17 +1578,32 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if self.mode == MODE_ON:
             return True, ELEC_BLOCK_NONE
 
+        # If the cell is already physically on AND the pump is on, the
+        # post-start margin is moot — the safety it guards against (cell
+        # energized without water flow) does not apply, because water
+        # has been flowing already. Don't force-cycle an established
+        # cell off just because our in-memory tracker was reset by a
+        # restart.
+        elec_id = self.options.get(CONF_ELECTROLYZER_SWITCH)
+        cell_already_on = False
+        if elec_id is not None:
+            cell_state = self.hass.states.get(elec_id)
+            cell_already_on = cell_state is not None and cell_state.state == STATE_ON
+
         # Apply post-start margin via _pump_continuous_on_since (debounced
         # against brief pump cycling). Falls back to the run window logic
         # if continuous_on tracking hasn't built up enough history yet.
         if self._pump_continuous_on_since is not None:
             on_for = (now - self._pump_continuous_on_since).total_seconds()
-            if on_for < post_start:
+            if on_for < post_start and not cell_already_on:
                 # Wake up exactly when the margin expires so the cell
                 # turns ON without waiting for the next 60-second tick.
                 self._schedule_deferred_refresh(post_start - on_for + 1)
                 return False, ELEC_BLOCK_MARGIN
-        elif not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
+        elif (
+            not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop)
+            and not cell_already_on
+        ):
             return False, ELEC_BLOCK_MARGIN
 
         # Pre-stop margin: still gated by the schedule window

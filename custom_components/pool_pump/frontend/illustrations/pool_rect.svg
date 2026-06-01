@@ -1,209 +1,57 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-<svg
-    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    xmlns="http://www.w3.org/2000/svg"
-    xmlns:cc="http://web.resource.org/cc/"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
-    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-    xmlns:svg="http://www.w3.org/2000/svg"
-    xmlns:ns1="http://sozi.baierouge.fr"
-    xmlns:xlink="http://www.w3.org/1999/xlink"
-    id="svg2"
-    sodipodi:docname="swimming pool.svg"
-    viewBox="0 0 403.86 238.14"
-    sodipodi:version="0.32"
-    version="1.0"
-    inkscape:output_extension="org.inkscape.output.svg.inkscape"
-    inkscape:version="0.45.1"
-    sodipodi:docbase="C:\Documents and Settings\Bianca\Desktop"
-  >
-  <sodipodi:namedview
-      id="base"
-      bordercolor="#666666"
-      inkscape:pageshadow="2"
-      inkscape:guide-bbox="true"
-      pagecolor="#ffffff"
-      inkscape:window-height="811"
-      inkscape:zoom="1.4"
-      inkscape:window-x="-4"
-      borderopacity="1.0"
-      inkscape:current-layer="layer1"
-      inkscape:cx="138.40283"
-      inkscape:cy="130.39066"
-      showguides="true"
-      inkscape:window-y="-4"
-      inkscape:window-width="1152"
-      inkscape:pageopacity="0.0"
-      inkscape:document-units="px"
-  />
-  <g
-      id="layer1"
-      inkscape:label="Camada 1"
-      inkscape:groupmode="layer"
-      transform="translate(-88.964 -177.22)"
-    >
-    <g
-        id="g9011"
-      >
-      <path
-          id="path4128"
-          style="fill-rule:evenodd;fill:#dde6dc"
-          d="m340.91 177.72l-251.44 105 82.84 132.16 320-186.44-151.4-50.72zm-0.22 7.78l130.81 44.09-290.84 166.13-72.91-111.31 232.94-98.91z"
-      />
-      <path
-          id="path2186"
-          class="pool-water"
-          style="fill-rule:evenodd;fill:#51badc"
-          d="m114.46 294.33l226.16-96.52 115.85 40.31-275.67 157.5-66.34-101.29z"
-      />
-      <path
-          id="path2170"
-          style="stroke:#000000;stroke-width:1px;fill:none"
-          d="m89.464 282.72l82.856 132.14 320-186.43-151.43-50.71-251.43 105z"
-      />
-      <path
-          id="path8040"
-          sodipodi:nodetypes="ccccccc"
-          style="fill-rule:evenodd;fill:#aac1a8"
-          d="m107.86 284.33l232.76-98.75 130.81 43.93-15 8.66-115.72-40.36-225.84 97.41-7.01-10.89z"
-      />
-      <path
-          id="path2172"
-          sodipodi:nodetypes="ccccc"
-          style="stroke:#000000;stroke-width:.91079px;fill:none"
-          d="m107.76 284.39l72.89 111.32 290.84-166.11-130.81-44.09-232.92 98.88z"
-      />
-      <path
-          id="path2174"
-          sodipodi:nodetypes="cccc"
-          style="stroke:#000000;stroke-width:1px;fill:none"
-          d="m114.82 295.22l225.9-97.38 115.71 40.24"
-      />
-      <path
-          id="path2176"
-          sodipodi:nodetypes="cc"
-          style="stroke:#000000;stroke-width:1px;fill:none"
-          d="m340.72 198.06v-12.2"
-      />
-      <path
-          id="path2184"
-          sodipodi:nodetypes="csssscscsscsss"
-          style="fill-rule:evenodd;stroke:#000000;stroke-width:1px;fill:#b7b7b7"
-          d="m342.81 310.33c0.39 1.89 5.67 1.26 6.22-1.15 1.07-4.7 2.61-9.47 2.69-14.33 0.04-2.23-1.65-4.46-3.64-5.35-3.88-1.71-7.99-2.97-12.05-4.24-3.12-0.98-6.45-1.62-9.65-1.72-4.76 0.17-6.47 5.87-7.3 10.06-1.58 7.88-3.23 19.88-4.75 27.78 1.34 1.32 5.06 1.32 5.31-0.88 0.29-2.6 0.91-9.18 1.4-11.76 1.06-5.64 1.87-11.38 3.42-16.89 3.39-5.59 13.25-0.86 17.99 0.98 1.71 0.66 3.18 2.39 2.58 4.71-1.08 4.14-2.97 9.13-2.22 12.79z"
-      />
-      <path
-          id="path2178"
-          sodipodi:nodetypes="csssscscsscsss"
-          style="fill-rule:evenodd;stroke:#000000;stroke-width:1px;fill:#b7b7b7"
-          d="m324.13 321.36c0.39 1.89 5.67 1.26 6.22-1.15 1.07-4.7 2.62-9.47 2.69-14.33 0.04-2.23-1.65-4.47-3.64-5.35-3.88-1.71-7.99-2.97-12.05-4.24-3.12-0.98-6.45-1.62-9.64-1.72-4.77 0.17-6.48 5.86-7.31 10.06-1.58 7.88-3.23 19.88-4.75 27.78 1.34 1.32 5.07 1.32 5.31-0.88 0.29-2.6 0.91-9.18 1.4-11.76 1.06-5.64 1.87-11.38 3.42-16.89 3.39-5.59 13.25-0.86 18 0.98 1.7 0.65 3.17 2.39 2.57 4.71-1.08 4.14-2.97 9.13-2.22 12.79z"
-      />
-      <path
-          id="path5111"
-          sodipodi:nodetypes="cccc"
-          style="fill-rule:evenodd;fill:#dde6dc"
-          d="m295.05 341.11l29.07-16.36-1.76-9.97-27.63 16.03"
-      />
-      <path
-          id="path5131"
-          sodipodi:nodetypes="cc"
-          style="stroke:#000000;stroke-width:.91079px;fill:none"
-          d="m294.09 330.92l28.68-16.38"
-      />
-    </g
-    >
-  </g
-  >
-  <metadata
-    >
-    <rdf:RDF
-      >
-      <cc:Work
-        >
-        <dc:format
-          >image/svg+xml</dc:format
-        >
-        <dc:type
-            rdf:resource="http://purl.org/dc/dcmitype/StillImage"
-        />
-        <cc:license
-            rdf:resource="http://creativecommons.org/licenses/publicdomain/"
-        />
-        <dc:publisher
-          >
-          <cc:Agent
-              rdf:about="http://openclipart.org/"
-            >
-            <dc:title
-              >Openclipart</dc:title
-            >
-          </cc:Agent
-          >
-        </dc:publisher
-        >
-        <dc:title
-          >Swimming pool</dc:title
-        >
-        <dc:date
-          >2010-06-15T20:02:44</dc:date
-        >
-        <dc:description
-          >A swimming pool, with a swimming pool ladder.</dc:description
-        >
-        <dc:source
-          >https://openclipart.org/detail/66985/swimming-pool-by-laobc-66985</dc:source
-        >
-        <dc:creator
-          >
-          <cc:Agent
-            >
-            <dc:title
-              >laobc</dc:title
-            >
-          </cc:Agent
-          >
-        </dc:creator
-        >
-        <dc:subject
-          >
-          <rdf:Bag
-            >
-            <rdf:li
-              >ladder</rdf:li
-            >
-            <rdf:li
-              >pool ladder</rdf:li
-            >
-            <rdf:li
-              >summer</rdf:li
-            >
-            <rdf:li
-              >swimming pool ladder</rdf:li
-            >
-          </rdf:Bag
-          >
-        </dc:subject
-        >
-      </cc:Work
-      >
-      <cc:License
-          rdf:about="http://creativecommons.org/licenses/publicdomain/"
-        >
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#Reproduction"
-        />
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#Distribution"
-        />
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#DerivativeWorks"
-        />
-      </cc:License
-      >
-    </rdf:RDF
-    >
-  </metadata
-  >
-</svg
->
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Above-ground rectangular pool, 3/4 axonometric view, matching the
+     style of pool_round.svg (openclipart 316492 by laobc). Hand-drawn
+     for Pool Pump Manager. Free for any use. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 366" width="620" height="366">
+  <defs>
+    <!-- Vertical white stripe pattern for the front/right walls (Intex-style frame) -->
+    <pattern id="poolStripes" x="0" y="0" width="62" height="20" patternUnits="userSpaceOnUse">
+      <rect width="62" height="20" fill="#2586A6"/>
+      <rect x="7" y="0" width="3" height="20" fill="#FFFFFE"/>
+      <rect x="55" y="0" width="3" height="20" fill="#FFFFFE"/>
+    </pattern>
+    <!-- Vertical stripes for the receding (left) wall, slightly darker -->
+    <pattern id="poolStripesSide" x="0" y="0" width="62" height="20" patternUnits="userSpaceOnUse">
+      <rect width="62" height="20" fill="#20718D"/>
+      <rect x="7" y="0" width="3" height="20" fill="#E8F4F8"/>
+      <rect x="55" y="0" width="3" height="20" fill="#E8F4F8"/>
+    </pattern>
+  </defs>
+
+  <!-- Grass oval (shadow under the pool) -->
+  <ellipse cx="310" cy="294" rx="310" ry="62" fill="#B3CF38"/>
+
+  <!-- Pool front wall (rectangle in 3/4 perspective) -->
+  <!-- Coordinates : top-back-left → top-back-right → bottom-back-right → bottom-front-right → bottom-front-left → top-front-left -->
+  <!-- Back-left wall (left receding face, partially visible) -->
+  <polygon points="80,160 150,135 150,265 80,290" fill="url(#poolStripesSide)" stroke="#1a5a72" stroke-width="1"/>
+  <!-- Front wall (largest, facing viewer) -->
+  <polygon points="150,265 530,265 530,290 150,290" fill="url(#poolStripes)" stroke="#1a5a72" stroke-width="1"/>
+  <!-- Right side wall (right receding) -->
+  <polygon points="530,265 530,290 600,265 600,240" fill="url(#poolStripesSide)" stroke="#1a5a72" stroke-width="1"/>
+
+  <!-- Top rim — the white coping around the pool edge -->
+  <polygon points="80,160 150,135 540,135 600,160 530,170 150,170" fill="#FFFFFE" stroke="#888888" stroke-width="1"/>
+  <polygon points="600,160 530,170 530,265 600,240" fill="#E8E8E8" stroke="#888888" stroke-width="1"/>
+
+  <!-- Water surface (inner rectangle, light blue) -->
+  <polygon class="pool-water" points="150,170 530,170 530,265 150,265" fill="#7CCBE5" stroke="#2586A6" stroke-width="1"/>
+  <!-- Subtle water highlight (whiter shape in the middle for shimmer) -->
+  <polygon points="200,185 480,185 470,250 190,250" fill="#A3D8E9" opacity="0.6"/>
+  <polygon points="260,200 420,200 415,235 255,235" fill="#BCE2EC" opacity="0.5"/>
+
+  <!-- Ladder (yellow/orange, climbing over the right wall) -->
+  <g stroke="#F3B528" stroke-width="4" stroke-linecap="round" fill="none">
+    <!-- Two vertical rails leaning over the wall -->
+    <path d="M495,120 L485,180 L485,260"/>
+    <path d="M515,120 L505,180 L505,260"/>
+    <!-- Rungs on the outside (top) -->
+    <line x1="487" y1="140" x2="513" y2="140"/>
+    <line x1="486" y1="155" x2="512" y2="155"/>
+    <line x1="485" y1="170" x2="510" y2="170"/>
+    <!-- Rungs on the inside (underwater) -->
+    <line x1="485" y1="200" x2="505" y2="200"/>
+    <line x1="485" y1="220" x2="505" y2="220"/>
+    <line x1="485" y1="240" x2="505" y2="240"/>
+  </g>
+</svg>
