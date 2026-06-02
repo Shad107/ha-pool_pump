@@ -43,12 +43,16 @@ from .const import (
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
     CONF_EARLIEST_START_HOUR,
+    CONF_FILTRATION_MULTIPLIER,
     CONF_LATEST_END_HOUR,
     CONF_SHOW_ILLUSTRATION,
+    CONF_WINTERIZATION_OVERRIDE,
     DEFAULT_CHEMISTRY_ENABLED,
     DEFAULT_EARLIEST_START_HOUR,
+    DEFAULT_FILTRATION_MULTIPLIER,
     DEFAULT_LATEST_END_HOUR,
     DEFAULT_SHOW_ILLUSTRATION,
+    DEFAULT_WINTERIZATION_OVERRIDE,
     ROUTINES,
     CONF_AUTOTUNE_ENABLED,
     CONF_AUTOTUNE_WINDOW_DAYS,
@@ -1311,6 +1315,16 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 forecast_value=data.forecast_value,
                 heatwave_threshold=heatwave_threshold,
             )
+            # Apply the user-defined global multiplier, then re-clamp
+            # to [min_h, max_h] so we don't blow past the bounds the
+            # user has set (e.g. multiplier 1.5 capped at max_hours).
+            mult = float(
+                self.options.get(
+                    CONF_FILTRATION_MULTIPLIER, DEFAULT_FILTRATION_MULTIPLIER
+                )
+            )
+            duration = max(min_h, min(max_h, duration * mult))
+
             data.duration_hours = duration
             data.heatwave_active = heatwave
             raw_runs = build_runs(pivot, duration, break_h)
@@ -1368,10 +1382,18 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 "dose_info": self._mode_timer_dose_info,
             }
 
-        # Winterization (month-range check)
-        win_start = int(self.options.get(CONF_WINTERIZATION_START_MONTH, 0) or 0)
-        win_end = int(self.options.get(CONF_WINTERIZATION_END_MONTH, 0) or 0)
-        data.winterization_active = self._is_winter_month(now, win_start, win_end)
+        # Winterization (month-range check, with optional manual override)
+        win_override = self.options.get(
+            CONF_WINTERIZATION_OVERRIDE, DEFAULT_WINTERIZATION_OVERRIDE
+        )
+        if win_override == "on":
+            data.winterization_active = True
+        elif win_override == "off":
+            data.winterization_active = False
+        else:
+            win_start = int(self.options.get(CONF_WINTERIZATION_START_MONTH, 0) or 0)
+            win_end = int(self.options.get(CONF_WINTERIZATION_END_MONTH, 0) or 0)
+            data.winterization_active = self._is_winter_month(now, win_start, win_end)
 
         # Pump short-cycle debounce: update _pump_continuous_on_since
         short_cycle = int(

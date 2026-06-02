@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.14.1"
+VERSION = "0.14.2"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -39,6 +39,15 @@ CONF_LATEST_END_HOUR = "latest_end_hour"
 # pool with chlorine pellets and no chemistry tracking, no cell, etc.)
 CONF_SHOW_ILLUSTRATION = "show_illustration"
 CONF_CHEMISTRY_ENABLED = "chemistry_enabled"
+# Global multiplier applied to the computed filtration duration. Lets
+# users tune over/under-filtration without having to mess with min/max
+# hours or pivot. Default 1.0 = no change.
+CONF_FILTRATION_MULTIPLIER = "filtration_multiplier"
+# Manual override for the winterization state:
+#   "auto" → use the configured month range (current behavior)
+#   "on"   → force winterization active (pump + cell off)
+#   "off"  → force winterization disabled (ignore month range)
+CONF_WINTERIZATION_OVERRIDE = "winterization_override"
 CONF_MIN_HOURS = "min_hours"
 CONF_MAX_HOURS = "max_hours"
 CONF_BREAK_HOURS = "break_hours"
@@ -93,6 +102,9 @@ DEFAULT_SHOW_ILLUSTRATION = True
 DEFAULT_CHEMISTRY_ENABLED = True
 DEFAULT_CUSTOM_POOL_SHAPE = "rect"
 DEFAULT_CUSTOM_POOL_INGROUND = False
+DEFAULT_FILTRATION_MULTIPLIER = 1.0
+DEFAULT_WINTERIZATION_OVERRIDE = "auto"
+WINTERIZATION_OVERRIDE_OPTIONS = ["auto", "on", "off"]
 
 # Chemistry parameter metadata.
 # Each entry: (key, label_fr, unit, min, max, step, default_target,

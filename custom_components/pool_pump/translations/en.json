@@ -52,7 +52,9 @@
           "earliest_start_hour": "Earliest hour the pump can run (0-24, 0 = no limit)",
           "latest_end_hour": "Latest hour the pump can run (0-24, 24 = no limit)",
           "show_illustration": "Show pool illustration on the card",
-          "chemistry_enabled": "Enable the chemistry assistant"
+          "chemistry_enabled": "Enable the chemistry assistant",
+          "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
+          "winterization_override": "Winterization override (auto = month range, on/off = manual)"
         }
       }
     },
@@ -103,7 +105,9 @@
           "earliest_start_hour": "Earliest hour the pump can run (0-24, 0 = no limit)",
           "latest_end_hour": "Latest hour the pump can run (0-24, 24 = no limit)",
           "show_illustration": "Show pool illustration on the card",
-          "chemistry_enabled": "Enable the chemistry assistant"
+          "chemistry_enabled": "Enable the chemistry assistant",
+          "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
+          "winterization_override": "Winterization override (auto = month range, on/off = manual)"
         }
       }
     }
@@ -113,6 +117,13 @@
       "options": {
         "water": "Water sensor (probe)",
         "air_model": "Air-based model (no probe)"
+      }
+    },
+    "winterization_override": {
+      "options": {
+        "auto": "Auto (use month range)",
+        "on": "Force ON (winterize now)",
+        "off": "Force OFF (skip winterization)"
       }
     }
   },

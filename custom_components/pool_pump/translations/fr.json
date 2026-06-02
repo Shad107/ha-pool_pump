@@ -52,7 +52,9 @@
           "earliest_start_hour": "Heure min de mise en route (0-24, 0 = pas de limite)",
           "latest_end_hour": "Heure max d'arrêt (0-24, 24 = pas de limite)",
           "show_illustration": "Afficher l'illustration de la piscine sur la carte",
-          "chemistry_enabled": "Activer l'assistant chimie"
+          "chemistry_enabled": "Activer l'assistant chimie",
+          "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
+          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)"
         }
       }
     },
@@ -103,7 +105,9 @@
           "earliest_start_hour": "Heure min de mise en route (0-24, 0 = pas de limite)",
           "latest_end_hour": "Heure max d'arrêt (0-24, 24 = pas de limite)",
           "show_illustration": "Afficher l'illustration de la piscine sur la carte",
-          "chemistry_enabled": "Activer l'assistant chimie"
+          "chemistry_enabled": "Activer l'assistant chimie",
+          "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
+          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)"
         }
       }
     }
@@ -113,6 +117,13 @@
       "options": {
         "water": "Sonde d'eau",
         "air_model": "Modèle basé sur l'air (pas de sonde)"
+      }
+    },
+    "winterization_override": {
+      "options": {
+        "auto": "Auto (selon plage de mois)",
+        "on": "Forcer ON (hiverner maintenant)",
+        "off": "Forcer OFF (ignorer l'hivernage)"
       }
     }
   },

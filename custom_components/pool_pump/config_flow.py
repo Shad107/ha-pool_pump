@@ -28,8 +28,10 @@ from .const import (
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
     CONF_EARLIEST_START_HOUR,
+    CONF_FILTRATION_MULTIPLIER,
     CONF_LATEST_END_HOUR,
     CONF_SHOW_ILLUSTRATION,
+    CONF_WINTERIZATION_OVERRIDE,
     CONF_ELECTROLYZER_MAX_TEMP,
     CONF_ELECTROLYZER_MIN_TEMP,
     CONF_ELECTROLYZER_POST_START_DELAY,
@@ -67,8 +69,11 @@ from .const import (
     DEFAULT_CUSTOM_POOL_INGROUND,
     DEFAULT_CUSTOM_POOL_SHAPE,
     DEFAULT_EARLIEST_START_HOUR,
+    DEFAULT_FILTRATION_MULTIPLIER,
     DEFAULT_LATEST_END_HOUR,
     DEFAULT_SHOW_ILLUSTRATION,
+    DEFAULT_WINTERIZATION_OVERRIDE,
+    WINTERIZATION_OVERRIDE_OPTIONS,
     DEFAULT_BREAK_HOURS,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
@@ -400,6 +405,30 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 ),
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=24, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_FILTRATION_MULTIPLIER,
+                default=float(
+                    current.get(
+                        CONF_FILTRATION_MULTIPLIER, DEFAULT_FILTRATION_MULTIPLIER
+                    )
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0.3, max=3.0, step=0.05, mode=NumberSelectorMode.BOX
+                )
+            ),
+            vol.Optional(
+                CONF_WINTERIZATION_OVERRIDE,
+                default=current.get(
+                    CONF_WINTERIZATION_OVERRIDE, DEFAULT_WINTERIZATION_OVERRIDE
+                ),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=list(WINTERIZATION_OVERRIDE_OPTIONS),
+                    mode=SelectSelectorMode.LIST,
+                    translation_key="winterization_override",
+                )
             ),
             vol.Optional(
                 CONF_FORECAST_SENSOR,
