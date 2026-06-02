@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.14.2";
+const CARD_VERSION = "0.15.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 

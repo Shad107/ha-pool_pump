@@ -27,6 +27,12 @@ from .const import (
     CONF_CUSTOM_POOL_LENGTH,
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
+    CONF_DURATION_AT_15C,
+    CONF_DURATION_AT_20C,
+    CONF_DURATION_AT_25C,
+    CONF_DURATION_AT_30C,
+    CONF_DURATION_AT_35C,
+    CONF_DURATION_CURVE_ENABLED,
     CONF_EARLIEST_START_HOUR,
     CONF_FILTRATION_MULTIPLIER,
     CONF_LATEST_END_HOUR,
@@ -68,6 +74,12 @@ from .const import (
     DEFAULT_CHEMISTRY_ENABLED,
     DEFAULT_CUSTOM_POOL_INGROUND,
     DEFAULT_CUSTOM_POOL_SHAPE,
+    DEFAULT_DURATION_AT_15C,
+    DEFAULT_DURATION_AT_20C,
+    DEFAULT_DURATION_AT_25C,
+    DEFAULT_DURATION_AT_30C,
+    DEFAULT_DURATION_AT_35C,
+    DEFAULT_DURATION_CURVE_ENABLED,
     DEFAULT_EARLIEST_START_HOUR,
     DEFAULT_FILTRATION_MULTIPLIER,
     DEFAULT_LATEST_END_HOUR,
@@ -417,6 +429,59 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 NumberSelectorConfig(
                     min=0.3, max=3.0, step=0.05, mode=NumberSelectorMode.BOX
                 )
+            ),
+            vol.Optional(
+                CONF_DURATION_CURVE_ENABLED,
+                default=bool(
+                    current.get(
+                        CONF_DURATION_CURVE_ENABLED, DEFAULT_DURATION_CURVE_ENABLED
+                    )
+                ),
+            ): bool,
+            vol.Optional(
+                CONF_DURATION_AT_15C,
+                default=float(
+                    current.get(CONF_DURATION_AT_15C, DEFAULT_DURATION_AT_15C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
+                CONF_DURATION_AT_20C,
+                default=float(
+                    current.get(CONF_DURATION_AT_20C, DEFAULT_DURATION_AT_20C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
+                CONF_DURATION_AT_25C,
+                default=float(
+                    current.get(CONF_DURATION_AT_25C, DEFAULT_DURATION_AT_25C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
+                CONF_DURATION_AT_30C,
+                default=float(
+                    current.get(CONF_DURATION_AT_30C, DEFAULT_DURATION_AT_30C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
+                CONF_DURATION_AT_35C,
+                default=float(
+                    current.get(CONF_DURATION_AT_35C, DEFAULT_DURATION_AT_35C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
             ),
             vol.Optional(
                 CONF_WINTERIZATION_OVERRIDE,

@@ -42,12 +42,24 @@ from .const import (
     CONF_CUSTOM_POOL_LENGTH,
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
+    CONF_DURATION_AT_15C,
+    CONF_DURATION_AT_20C,
+    CONF_DURATION_AT_25C,
+    CONF_DURATION_AT_30C,
+    CONF_DURATION_AT_35C,
+    CONF_DURATION_CURVE_ENABLED,
     CONF_EARLIEST_START_HOUR,
     CONF_FILTRATION_MULTIPLIER,
     CONF_LATEST_END_HOUR,
     CONF_SHOW_ILLUSTRATION,
     CONF_WINTERIZATION_OVERRIDE,
     DEFAULT_CHEMISTRY_ENABLED,
+    DEFAULT_DURATION_AT_15C,
+    DEFAULT_DURATION_AT_20C,
+    DEFAULT_DURATION_AT_25C,
+    DEFAULT_DURATION_AT_30C,
+    DEFAULT_DURATION_AT_35C,
+    DEFAULT_DURATION_CURVE_ENABLED,
     DEFAULT_EARLIEST_START_HOUR,
     DEFAULT_FILTRATION_MULTIPLIER,
     DEFAULT_LATEST_END_HOUR,
@@ -245,6 +257,33 @@ class PoolPumpData:
     chemistry_enabled: bool = True
 
 
+def compute_duration_from_curve(
+    temperature: float, anchors: list[tuple[float, float]]
+) -> float:
+    """Linear interpolation between (temp, hours) anchor points.
+
+    `anchors` is a list of (temperature_C, hours) tuples, sorted by
+    temperature. Outside the bracket, the closest anchor is reused —
+    we don't extrapolate, because the user already vetted the bounds
+    they're interested in.
+
+    Returns hours (unclamped — the caller clamps to [min_h, max_h]).
+    """
+    if not anchors:
+        return 0.0
+    if temperature <= anchors[0][0]:
+        return anchors[0][1]
+    if temperature >= anchors[-1][0]:
+        return anchors[-1][1]
+    for i in range(len(anchors) - 1):
+        t0, h0 = anchors[i]
+        t1, h1 = anchors[i + 1]
+        if t0 <= temperature <= t1:
+            ratio = (temperature - t0) / (t1 - t0) if t1 != t0 else 0.0
+            return h0 + ratio * (h1 - h0)
+    return anchors[-1][1]  # unreachable, here for safety
+
+
 def compute_duration(
     temperature: float,
     *,
@@ -252,18 +291,29 @@ def compute_duration(
     max_hours: float,
     forecast_value: float | None,
     heatwave_threshold: float,
+    curve_anchors: list[tuple[float, float]] | None = None,
 ) -> tuple[float, bool]:
-    """Return (duration_hours, heatwave_active) for the given inputs."""
-    if temperature < COLD_THRESHOLD_CELSIUS:
-        base = temperature / 3.0
-    else:
-        base = temperature / 2.0
+    """Return (duration_hours, heatwave_active) for the given inputs.
 
+    When `curve_anchors` is provided (and non-empty), the duration is
+    interpolated from the user curve instead of the built-in
+    T/2 (T/3 below 13°C) formula. Heatwave override still wins —
+    canicule forces max_hours regardless of the curve, by design
+    (users typically want max filtration on a heat-spike day even if
+    their curve says less).
+    """
     heatwave_active = (
         forecast_value is not None and forecast_value >= heatwave_threshold
     )
     if heatwave_active:
         return max_hours, True
+
+    if curve_anchors:
+        base = compute_duration_from_curve(temperature, curve_anchors)
+    elif temperature < COLD_THRESHOLD_CELSIUS:
+        base = temperature / 3.0
+    else:
+        base = temperature / 2.0
 
     return max(min_hours, min(max_hours, base)), False
 
@@ -1308,12 +1358,31 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
 
         pivot = _pivot_for_day(now, pivot_hour)
         if data.temperature_used is not None:
+            curve_anchors: list[tuple[float, float]] | None = None
+            if bool(
+                self.options.get(
+                    CONF_DURATION_CURVE_ENABLED, DEFAULT_DURATION_CURVE_ENABLED
+                )
+            ):
+                curve_anchors = [
+                    (15.0, float(self.options.get(
+                        CONF_DURATION_AT_15C, DEFAULT_DURATION_AT_15C))),
+                    (20.0, float(self.options.get(
+                        CONF_DURATION_AT_20C, DEFAULT_DURATION_AT_20C))),
+                    (25.0, float(self.options.get(
+                        CONF_DURATION_AT_25C, DEFAULT_DURATION_AT_25C))),
+                    (30.0, float(self.options.get(
+                        CONF_DURATION_AT_30C, DEFAULT_DURATION_AT_30C))),
+                    (35.0, float(self.options.get(
+                        CONF_DURATION_AT_35C, DEFAULT_DURATION_AT_35C))),
+                ]
             duration, heatwave = compute_duration(
                 data.temperature_used,
                 min_hours=min_h,
                 max_hours=max_h,
                 forecast_value=data.forecast_value,
                 heatwave_threshold=heatwave_threshold,
+                curve_anchors=curve_anchors,
             )
             # Apply the user-defined global multiplier, then re-clamp
             # to [min_h, max_h] so we don't blow past the bounds the

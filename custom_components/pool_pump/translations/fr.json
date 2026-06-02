@@ -54,7 +54,13 @@
           "show_illustration": "Afficher l'illustration de la piscine sur la carte",
           "chemistry_enabled": "Activer l'assistant chimie",
           "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
-          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)"
+          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)",
+          "duration_curve_enabled": "Utiliser une courbe T° → durée perso (remplace la formule T/2)",
+          "duration_at_15c": "Courbe : heures à 15 °C",
+          "duration_at_20c": "Courbe : heures à 20 °C",
+          "duration_at_25c": "Courbe : heures à 25 °C",
+          "duration_at_30c": "Courbe : heures à 30 °C",
+          "duration_at_35c": "Courbe : heures à 35 °C"
         }
       }
     },
@@ -107,7 +113,13 @@
           "show_illustration": "Afficher l'illustration de la piscine sur la carte",
           "chemistry_enabled": "Activer l'assistant chimie",
           "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
-          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)"
+          "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)",
+          "duration_curve_enabled": "Utiliser une courbe T° → durée perso (remplace la formule T/2)",
+          "duration_at_15c": "Courbe : heures à 15 °C",
+          "duration_at_20c": "Courbe : heures à 20 °C",
+          "duration_at_25c": "Courbe : heures à 25 °C",
+          "duration_at_30c": "Courbe : heures à 30 °C",
+          "duration_at_35c": "Courbe : heures à 35 °C"
         }
       }
     }

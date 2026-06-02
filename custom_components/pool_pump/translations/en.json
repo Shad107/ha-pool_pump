@@ -54,7 +54,13 @@
           "show_illustration": "Show pool illustration on the card",
           "chemistry_enabled": "Enable the chemistry assistant",
           "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
-          "winterization_override": "Winterization override (auto = month range, on/off = manual)"
+          "winterization_override": "Winterization override (auto = month range, on/off = manual)",
+          "duration_curve_enabled": "Use a custom temperature → duration curve (overrides T/2 formula)",
+          "duration_at_15c": "Curve: hours at 15 °C",
+          "duration_at_20c": "Curve: hours at 20 °C",
+          "duration_at_25c": "Curve: hours at 25 °C",
+          "duration_at_30c": "Curve: hours at 30 °C",
+          "duration_at_35c": "Curve: hours at 35 °C"
         }
       }
     },
@@ -107,7 +113,13 @@
           "show_illustration": "Show pool illustration on the card",
           "chemistry_enabled": "Enable the chemistry assistant",
           "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
-          "winterization_override": "Winterization override (auto = month range, on/off = manual)"
+          "winterization_override": "Winterization override (auto = month range, on/off = manual)",
+          "duration_curve_enabled": "Use a custom temperature → duration curve (overrides T/2 formula)",
+          "duration_at_15c": "Curve: hours at 15 °C",
+          "duration_at_20c": "Curve: hours at 20 °C",
+          "duration_at_25c": "Curve: hours at 25 °C",
+          "duration_at_30c": "Curve: hours at 30 °C",
+          "duration_at_35c": "Curve: hours at 35 °C"
         }
       }
     }

@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.14.2"
+VERSION = "0.15.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -48,6 +48,16 @@ CONF_FILTRATION_MULTIPLIER = "filtration_multiplier"
 #   "on"   → force winterization active (pump + cell off)
 #   "off"  → force winterization disabled (ignore month range)
 CONF_WINTERIZATION_OVERRIDE = "winterization_override"
+# User-defined duration curve (5 anchor points at 15/20/25/30/35°C).
+# When enabled, replaces the built-in T/2 formula by linear
+# interpolation between these points. Below 15°C or above 35°C, the
+# closest anchor is reused (no extrapolation).
+CONF_DURATION_CURVE_ENABLED = "duration_curve_enabled"
+CONF_DURATION_AT_15C = "duration_at_15c"
+CONF_DURATION_AT_20C = "duration_at_20c"
+CONF_DURATION_AT_25C = "duration_at_25c"
+CONF_DURATION_AT_30C = "duration_at_30c"
+CONF_DURATION_AT_35C = "duration_at_35c"
 CONF_MIN_HOURS = "min_hours"
 CONF_MAX_HOURS = "max_hours"
 CONF_BREAK_HOURS = "break_hours"
@@ -105,6 +115,14 @@ DEFAULT_CUSTOM_POOL_INGROUND = False
 DEFAULT_FILTRATION_MULTIPLIER = 1.0
 DEFAULT_WINTERIZATION_OVERRIDE = "auto"
 WINTERIZATION_OVERRIDE_OPTIONS = ["auto", "on", "off"]
+DEFAULT_DURATION_CURVE_ENABLED = False
+# Defaults reproduce the built-in T/2 formula at the anchor points,
+# so toggling on without further changes is a no-op.
+DEFAULT_DURATION_AT_15C = 7.5
+DEFAULT_DURATION_AT_20C = 10.0
+DEFAULT_DURATION_AT_25C = 12.5
+DEFAULT_DURATION_AT_30C = 15.0
+DEFAULT_DURATION_AT_35C = 17.5
 
 # Chemistry parameter metadata.
 # Each entry: (key, label_fr, unit, min, max, step, default_target,
