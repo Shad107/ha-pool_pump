@@ -43,7 +43,16 @@
           "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)",
           "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)",
           "weather_entity": "Entité météo (optionnelle — active la prévision 24h)",
-          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles"
+          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles",
+          "custom_pool_shape": "Piscine personnalisée : forme (utilisée seulement si preset = Personnalisée)",
+          "custom_pool_length": "Piscine personnalisée : longueur / diamètre (cm)",
+          "custom_pool_width": "Piscine personnalisée : largeur (cm, ignorée pour ronde)",
+          "custom_pool_depth": "Piscine personnalisée : profondeur moyenne (cm)",
+          "custom_pool_inground": "Piscine personnalisée : enterrée (vs hors-sol)",
+          "earliest_start_hour": "Heure min de mise en route (0-24, 0 = pas de limite)",
+          "latest_end_hour": "Heure max d'arrêt (0-24, 24 = pas de limite)",
+          "show_illustration": "Afficher l'illustration de la piscine sur la carte",
+          "chemistry_enabled": "Activer l'assistant chimie"
         }
       }
     },
@@ -85,7 +94,16 @@
           "pump_short_cycle_threshold": "Seuil court-cycle pompe (s, debounce protection cellule)",
           "pool_image_url": "URL image personnalisée (optionnelle, ex: /local/piscine.jpg)",
           "weather_entity": "Entité météo (optionnelle — active la prévision 24h)",
-          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles"
+          "autotune_enabled": "Auto-apprentissage de l'offset T° à partir des calibrations manuelles",
+          "custom_pool_shape": "Piscine personnalisée : forme (utilisée seulement si preset = Personnalisée)",
+          "custom_pool_length": "Piscine personnalisée : longueur / diamètre (cm)",
+          "custom_pool_width": "Piscine personnalisée : largeur (cm, ignorée pour ronde)",
+          "custom_pool_depth": "Piscine personnalisée : profondeur moyenne (cm)",
+          "custom_pool_inground": "Piscine personnalisée : enterrée (vs hors-sol)",
+          "earliest_start_hour": "Heure min de mise en route (0-24, 0 = pas de limite)",
+          "latest_end_hour": "Heure max d'arrêt (0-24, 24 = pas de limite)",
+          "show_illustration": "Afficher l'illustration de la piscine sur la carte",
+          "chemistry_enabled": "Activer l'assistant chimie"
         }
       }
     }

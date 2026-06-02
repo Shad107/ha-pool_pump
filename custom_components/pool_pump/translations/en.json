@@ -43,7 +43,16 @@
           "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)",
           "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)",
           "weather_entity": "Weather entity (optional — enables 24h forecast lookahead)",
-          "autotune_enabled": "Self-tune water temperature offset from manual calibrations"
+          "autotune_enabled": "Self-tune water temperature offset from manual calibrations",
+          "custom_pool_shape": "Custom pool: shape (used only when preset = Custom)",
+          "custom_pool_length": "Custom pool: length / diameter (cm)",
+          "custom_pool_width": "Custom pool: width (cm, ignored for round)",
+          "custom_pool_depth": "Custom pool: average depth (cm)",
+          "custom_pool_inground": "Custom pool: in-ground (vs above-ground frame pool)",
+          "earliest_start_hour": "Earliest hour the pump can run (0-24, 0 = no limit)",
+          "latest_end_hour": "Latest hour the pump can run (0-24, 24 = no limit)",
+          "show_illustration": "Show pool illustration on the card",
+          "chemistry_enabled": "Enable the chemistry assistant"
         }
       }
     },
@@ -85,7 +94,16 @@
           "pump_short_cycle_threshold": "Pump short-cycle threshold (s, cell debounce)",
           "pool_image_url": "Custom image URL (optional, e.g. /local/pool.jpg)",
           "weather_entity": "Weather entity (optional — enables 24h forecast lookahead)",
-          "autotune_enabled": "Self-tune water temperature offset from manual calibrations"
+          "autotune_enabled": "Self-tune water temperature offset from manual calibrations",
+          "custom_pool_shape": "Custom pool: shape (used only when preset = Custom)",
+          "custom_pool_length": "Custom pool: length / diameter (cm)",
+          "custom_pool_width": "Custom pool: width (cm, ignored for round)",
+          "custom_pool_depth": "Custom pool: average depth (cm)",
+          "custom_pool_inground": "Custom pool: in-ground (vs above-ground frame pool)",
+          "earliest_start_hour": "Earliest hour the pump can run (0-24, 0 = no limit)",
+          "latest_end_hour": "Latest hour the pump can run (0-24, 24 = no limit)",
+          "show_illustration": "Show pool illustration on the card",
+          "chemistry_enabled": "Enable the chemistry assistant"
         }
       }
     }
