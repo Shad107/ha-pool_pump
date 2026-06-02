@@ -129,14 +129,16 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
         d = self.coordinator.data
         if not d:
             return None
-        return {
+        attrs = {
             "mode": d.mode,
             "heatwave_active": d.heatwave_active,
             "forecast_value": d.forecast_value,
-            "electrolyzer_block_reason": d.electrolyzer_block_reason,
             "temperature_mode": d.temperature_mode,
             "pump_available": d.pump_available,
-            "electrolyzer_available": d.electrolyzer_available,
+            # v0.14 UI flags the card reads to decide what to render
+            "has_electrolyzer": d.has_electrolyzer,
+            "show_illustration": d.show_illustration,
+            "chemistry_enabled": d.chemistry_enabled,
             "air_temperature_raw": d.air_temperature_raw,
             "air_temperature_smoothed": d.air_temperature_smoothed,
             "solar_power_w": d.solar_power_w,
@@ -193,6 +195,16 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
                 for r in d.runs
             ],
         }
+        # Hide cell-only fields when no electrolyzer is configured —
+        # avoids polluting the attribute panel and signals to the card
+        # to drop the related UI.
+        if d.has_electrolyzer:
+            attrs["electrolyzer_block_reason"] = d.electrolyzer_block_reason
+            attrs["electrolyzer_available"] = d.electrolyzer_available
+        if not d.chemistry_enabled:
+            attrs.pop("chemistry", None)
+            attrs.pop("chemistry_recommendations", None)
+        return attrs
 
 
 class PoolGeometrySensor(PoolPumpEntity, SensorEntity):

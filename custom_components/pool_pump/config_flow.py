@@ -21,6 +21,15 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_AUTOTUNE_ENABLED,
     CONF_BREAK_HOURS,
+    CONF_CHEMISTRY_ENABLED,
+    CONF_CUSTOM_POOL_DEPTH,
+    CONF_CUSTOM_POOL_INGROUND,
+    CONF_CUSTOM_POOL_LENGTH,
+    CONF_CUSTOM_POOL_SHAPE,
+    CONF_CUSTOM_POOL_WIDTH,
+    CONF_EARLIEST_START_HOUR,
+    CONF_LATEST_END_HOUR,
+    CONF_SHOW_ILLUSTRATION,
     CONF_ELECTROLYZER_MAX_TEMP,
     CONF_ELECTROLYZER_MIN_TEMP,
     CONF_ELECTROLYZER_POST_START_DELAY,
@@ -54,6 +63,12 @@ from .const import (
     CONF_WINTERIZATION_START_MONTH,
     DEFAULT_AUTOTUNE_ENABLED,
     DEFAULT_BACKWASH_DURATION_MINUTES,
+    DEFAULT_CHEMISTRY_ENABLED,
+    DEFAULT_CUSTOM_POOL_INGROUND,
+    DEFAULT_CUSTOM_POOL_SHAPE,
+    DEFAULT_EARLIEST_START_HOUR,
+    DEFAULT_LATEST_END_HOUR,
+    DEFAULT_SHOW_ILLUSTRATION,
     DEFAULT_BREAK_HOURS,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
@@ -215,6 +230,60 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
         )
     ] = bool
 
+    # Custom-preset dimensions: always shown but only USED when the
+    # selected preset is "custom" (otherwise these values are ignored).
+    # Keeping them visible avoids a multi-step config flow just for
+    # users with unsupported pool models.
+    schema[
+        vol.Optional(
+            CONF_CUSTOM_POOL_SHAPE,
+            default=current.get(CONF_CUSTOM_POOL_SHAPE, DEFAULT_CUSTOM_POOL_SHAPE),
+        )
+    ] = SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                {"value": "rect", "label": "Rectangulaire"},
+                {"value": "round", "label": "Ronde"},
+            ],
+            mode=SelectSelectorMode.LIST,
+        )
+    )
+    schema[
+        vol.Optional(
+            CONF_CUSTOM_POOL_LENGTH,
+            description={"suggested_value": current.get(CONF_CUSTOM_POOL_LENGTH)},
+        )
+    ] = NumberSelector(
+        NumberSelectorConfig(min=50, max=2500, step=1, mode=NumberSelectorMode.BOX,
+                             unit_of_measurement="cm")
+    )
+    schema[
+        vol.Optional(
+            CONF_CUSTOM_POOL_WIDTH,
+            description={"suggested_value": current.get(CONF_CUSTOM_POOL_WIDTH)},
+        )
+    ] = NumberSelector(
+        NumberSelectorConfig(min=50, max=2500, step=1, mode=NumberSelectorMode.BOX,
+                             unit_of_measurement="cm")
+    )
+    schema[
+        vol.Optional(
+            CONF_CUSTOM_POOL_DEPTH,
+            description={"suggested_value": current.get(CONF_CUSTOM_POOL_DEPTH)},
+        )
+    ] = NumberSelector(
+        NumberSelectorConfig(min=30, max=400, step=1, mode=NumberSelectorMode.BOX,
+                             unit_of_measurement="cm")
+    )
+    schema[
+        vol.Optional(
+            CONF_CUSTOM_POOL_INGROUND,
+            default=bool(
+                current.get(CONF_CUSTOM_POOL_INGROUND, DEFAULT_CUSTOM_POOL_INGROUND)
+            ),
+        )
+    ] = bool
+
     if mode == TEMP_MODE_AIR_MODEL:
         # Tau optional: empty = derive from preset (if any) or DEFAULT_TAU_HOURS.
         schema[
@@ -315,6 +384,22 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 default=current.get(CONF_PIVOT_HOUR, DEFAULT_PIVOT_HOUR),
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=23, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_EARLIEST_START_HOUR,
+                default=current.get(
+                    CONF_EARLIEST_START_HOUR, DEFAULT_EARLIEST_START_HOUR
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=1, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_LATEST_END_HOUR,
+                default=current.get(
+                    CONF_LATEST_END_HOUR, DEFAULT_LATEST_END_HOUR
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=1, mode=NumberSelectorMode.BOX)
             ),
             vol.Optional(
                 CONF_FORECAST_SENSOR,
@@ -430,6 +515,18 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 CONF_AUTOTUNE_ENABLED,
                 default=bool(
                     current.get(CONF_AUTOTUNE_ENABLED, DEFAULT_AUTOTUNE_ENABLED)
+                ),
+            ): bool,
+            vol.Optional(
+                CONF_SHOW_ILLUSTRATION,
+                default=bool(
+                    current.get(CONF_SHOW_ILLUSTRATION, DEFAULT_SHOW_ILLUSTRATION)
+                ),
+            ): bool,
+            vol.Optional(
+                CONF_CHEMISTRY_ENABLED,
+                default=bool(
+                    current.get(CONF_CHEMISTRY_ENABLED, DEFAULT_CHEMISTRY_ENABLED)
                 ),
             ): bool,
         }

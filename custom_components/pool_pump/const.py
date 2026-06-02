@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.13.4"
+VERSION = "0.14.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -22,6 +22,23 @@ CONF_TAU_HOURS = "tau_hours"
 CONF_TEMPERATURE_OFFSET = "temperature_offset"
 CONF_POOL_PRESET = "pool_preset"
 CONF_POOL_HAS_COVER = "pool_has_cover"
+# Custom-preset dimensions (only used when CONF_POOL_PRESET == "custom").
+# Lets users with unsupported pool models still benefit from the
+# volume-aware dosing, accurate thermal model τ, and chemistry diagnosis.
+CONF_CUSTOM_POOL_LENGTH = "custom_pool_length"      # cm
+CONF_CUSTOM_POOL_WIDTH = "custom_pool_width"        # cm (=length for round)
+CONF_CUSTOM_POOL_DEPTH = "custom_pool_depth"        # cm
+CONF_CUSTOM_POOL_SHAPE = "custom_pool_shape"        # round | rect
+CONF_CUSTOM_POOL_INGROUND = "custom_pool_inground"  # bool
+# Hard time-window bounds: even if the computed run spans (e.g.) 04:00
+# → 22:00, clamp to these. Lets the user say "never before 8h" or
+# "stop by 21h" independently of pivot/split.
+CONF_EARLIEST_START_HOUR = "earliest_start_hour"
+CONF_LATEST_END_HOUR = "latest_end_hour"
+# UI toggles: lets users hide sections they don't care about (small
+# pool with chlorine pellets and no chemistry tracking, no cell, etc.)
+CONF_SHOW_ILLUSTRATION = "show_illustration"
+CONF_CHEMISTRY_ENABLED = "chemistry_enabled"
 CONF_MIN_HOURS = "min_hours"
 CONF_MAX_HOURS = "max_hours"
 CONF_BREAK_HOURS = "break_hours"
@@ -70,6 +87,12 @@ DEFAULT_AUTOTUNE_WINDOW_DAYS = 30
 DEFAULT_AUTOTUNE_MAX_OFFSET = 5.0  # safety clamp, °C
 DEFAULT_AUTOTUNE_HALF_LIFE_DAYS = 7.0  # newer calibrations weighted more
 DEFAULT_FORECAST_PREHEAT_THRESHOLD = 18.0  # °C; below this tomorrow → longer today
+DEFAULT_EARLIEST_START_HOUR = 0  # midnight — no restriction
+DEFAULT_LATEST_END_HOUR = 24     # midnight — no restriction
+DEFAULT_SHOW_ILLUSTRATION = True
+DEFAULT_CHEMISTRY_ENABLED = True
+DEFAULT_CUSTOM_POOL_SHAPE = "rect"
+DEFAULT_CUSTOM_POOL_INGROUND = False
 
 # Chemistry parameter metadata.
 # Each entry: (key, label_fr, unit, min, max, step, default_target,

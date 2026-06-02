@@ -36,6 +36,19 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CHEM_PARAMS,
     COLD_THRESHOLD_CELSIUS,
+    CONF_CHEMISTRY_ENABLED,
+    CONF_CUSTOM_POOL_DEPTH,
+    CONF_CUSTOM_POOL_INGROUND,
+    CONF_CUSTOM_POOL_LENGTH,
+    CONF_CUSTOM_POOL_SHAPE,
+    CONF_CUSTOM_POOL_WIDTH,
+    CONF_EARLIEST_START_HOUR,
+    CONF_LATEST_END_HOUR,
+    CONF_SHOW_ILLUSTRATION,
+    DEFAULT_CHEMISTRY_ENABLED,
+    DEFAULT_EARLIEST_START_HOUR,
+    DEFAULT_LATEST_END_HOUR,
+    DEFAULT_SHOW_ILLUSTRATION,
     ROUTINES,
     CONF_AUTOTUNE_ENABLED,
     CONF_AUTOTUNE_WINDOW_DAYS,
@@ -119,6 +132,8 @@ from .const import (
     UPDATE_INTERVAL,
 )
 from .presets import (
+    PRESET_CUSTOM,
+    build_custom_preset,
     compute_solar_coefficient,
     compute_tau_hours,
     get_preset,
@@ -219,6 +234,11 @@ class PoolPumpData:
     chemistry_recommendations: list[ChemistryRecommendation] = field(default_factory=list)
     mode_time_today: dict[str, float] = field(default_factory=dict)  # mode → seconds
     active_routine: dict | None = None  # {key, label, ends_at, dose_info}
+    # v0.14 UI flags consumed by the Lovelace card to conditionally
+    # render sections. None of these affect the integration's logic.
+    has_electrolyzer: bool = True
+    show_illustration: bool = True
+    chemistry_enabled: bool = True
 
 
 def compute_duration(
@@ -1139,7 +1159,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         )
 
         preset_slug = self.options.get(CONF_POOL_PRESET)
-        preset = get_preset(preset_slug) if preset_slug else None
+        if preset_slug == PRESET_CUSTOM:
+            # Build a synthetic preset from the user-provided dimensions.
+            # Falls back to None (no preset) if the user picked custom
+            # without filling in the fields — coordinator then uses
+            # default τ from CONF_TAU_HOURS.
+            preset = build_custom_preset(
+                length_cm=self.options.get(CONF_CUSTOM_POOL_LENGTH),
+                width_cm=self.options.get(CONF_CUSTOM_POOL_WIDTH),
+                depth_cm=self.options.get(CONF_CUSTOM_POOL_DEPTH),
+                shape=self.options.get(CONF_CUSTOM_POOL_SHAPE, "rect"),
+                inground=bool(self.options.get(CONF_CUSTOM_POOL_INGROUND)),
+            )
+        else:
+            preset = get_preset(preset_slug) if preset_slug else None
         data.pool_preset = preset
 
         # Tau: explicit option wins; otherwise derive from the preset if any.
@@ -1280,7 +1313,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             )
             data.duration_hours = duration
             data.heatwave_active = heatwave
-            data.runs = build_runs(pivot, duration, break_h)
+            raw_runs = build_runs(pivot, duration, break_h)
+            # Apply hard time-window bounds. Lets the user say
+            # "never before 8h" / "stop by 21h" without breaking the
+            # pivot/split symmetry of the scheduling logic.
+            data.runs = self._clamp_runs_to_bounds(raw_runs, now)
             data.next_start, data.next_end = self._compute_next_window(data.runs, now)
 
         pump_id: str = self.options[CONF_PUMP_SWITCH]
@@ -1409,10 +1446,22 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._last_mode_tick = now
         data.mode_time_today = dict(self._mode_time_today)
 
-        # Chemistry diagnosis (cheap, recomputed every tick; values only
-        # change on user input or auto-sensor refresh).
-        vol = preset["volume_m3"] if preset else None
-        data.chemistry, data.chemistry_recommendations = self._build_chemistry_diagnosis(vol)
+        # UI feature flags (v0.14). The card reads these to decide what
+        # to render. The integration logic doesn't depend on them.
+        data.has_electrolyzer = bool(self.options.get(CONF_ELECTROLYZER_SWITCH))
+        data.show_illustration = bool(
+            self.options.get(CONF_SHOW_ILLUSTRATION, DEFAULT_SHOW_ILLUSTRATION)
+        )
+        data.chemistry_enabled = bool(
+            self.options.get(CONF_CHEMISTRY_ENABLED, DEFAULT_CHEMISTRY_ENABLED)
+        )
+
+        # Chemistry diagnosis. Skip the computation entirely when the
+        # user has turned chemistry off — saves a few CPU cycles each
+        # tick and avoids polluting the sensor attributes.
+        if data.chemistry_enabled:
+            vol = preset["volume_m3"] if preset else None
+            data.chemistry, data.chemistry_recommendations = self._build_chemistry_diagnosis(vol)
 
         if preset is not None:
             svg_state = self._svg_state(pump_target, reason)
@@ -1638,6 +1687,35 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                     label,
                     entity_id,
                 )
+
+    def _clamp_runs_to_bounds(self, runs: list[Run], now: datetime) -> list[Run]:
+        """Clip each run to [earliest_start_hour, latest_end_hour] today.
+
+        Hours are integers 0..24 (24 == midnight next day). Defaults are
+        0 and 24 → no clipping. If a run ends up empty after clipping
+        (start >= end), it's dropped.
+        """
+        earliest = int(
+            self.options.get(CONF_EARLIEST_START_HOUR, DEFAULT_EARLIEST_START_HOUR)
+        )
+        latest = int(
+            self.options.get(CONF_LATEST_END_HOUR, DEFAULT_LATEST_END_HOUR)
+        )
+        if earliest <= 0 and latest >= 24:
+            return runs
+
+        clamped: list[Run] = []
+        for r in runs:
+            day = dt_util.as_local(r.start).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            lo = day + timedelta(hours=earliest)
+            hi = day + timedelta(hours=latest)
+            new_start = max(r.start, lo)
+            new_end = min(r.end, hi)
+            if new_start < new_end:
+                clamped.append(Run(start=new_start, end=new_end))
+        return clamped
 
     @staticmethod
     def _compute_next_window(

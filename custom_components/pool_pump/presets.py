@@ -98,6 +98,59 @@ def get_preset(slug: str) -> dict | None:
     return None
 
 
+def build_custom_preset(
+    length_cm: float | None,
+    width_cm: float | None,
+    depth_cm: float | None,
+    shape: str = "rect",
+    inground: bool = False,
+) -> dict | None:
+    """Build a synthetic preset dict from user-provided dimensions.
+
+    Used when the user picks CONF_POOL_PRESET == "custom" and fills in
+    their own measurements. All inputs are in cm; the preset uses metric
+    SI units (m, m², m³). Returns None if dimensions are missing or zero
+    — the caller should treat that as "no preset" and fall back to
+    defaults (volume 30 m³, τ from CONF_TAU_HOURS, k_sun 0.6).
+    """
+    if not (length_cm and depth_cm):
+        return None
+    if shape not in ("round", "rect"):
+        shape = "rect"
+
+    length_m = float(length_cm) / 100.0
+    depth_m = float(depth_cm) / 100.0
+    width_m = float(width_cm) / 100.0 if width_cm else length_m
+
+    if shape == "round":
+        # length = diameter; width is ignored
+        radius_m = length_m / 2.0
+        surface_m2 = 3.14159 * radius_m * radius_m
+    else:
+        surface_m2 = length_m * width_m
+
+    volume_m3 = surface_m2 * depth_m
+    label_shape = "ronde" if shape == "round" else "rectangulaire"
+    label_dims = (
+        f"{length_cm/100:.2f} m"
+        if shape == "round"
+        else f"{length_cm/100:.2f}×{width_cm/100:.2f} m"
+    )
+    label_place = "enterrée" if inground else "hors-sol"
+
+    return {
+        "slug": PRESET_CUSTOM,
+        "name": f"Personnalisée {label_shape} {label_dims} {label_place}",
+        "shape": shape,
+        "volume_m3": round(volume_m3, 2),
+        "surface_m2": round(surface_m2, 2),
+        "depth_m": round(depth_m, 2),
+        # Generic → inground exposure factor (higher τ). Frame/aboveground
+        # gets the lower factor (more wind-exposed, thinner walls).
+        "manufacturer": "Generic" if inground else "Custom Aboveground",
+    }
+
+
 def compute_tau_hours(preset: dict, *, with_cover: bool = False) -> float:
     """Empirical tau (hours) for the lumped 1st-order thermal model.
 
@@ -113,6 +166,9 @@ def compute_tau_hours(preset: dict, *, with_cover: bool = False) -> float:
     """
     depth = float(preset["depth_m"])
     mfr = preset.get("manufacturer", "")
+    # "Generic" presets are in-ground (1.2). Aboveground frame pools are
+    # wind-exposed (0.8). "Custom Aboveground" gets the aboveground
+    # factor too.
     exposure_factor = 1.2 if mfr == "Generic" else 0.8
     cover_factor = 2.5 if with_cover else 1.0
     return depth * exposure_factor * cover_factor * 20.0

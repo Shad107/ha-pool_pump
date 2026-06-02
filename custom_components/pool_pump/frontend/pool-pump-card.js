@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.13.4";
+const CARD_VERSION = "0.14.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -137,7 +137,14 @@ class PoolPumpCard extends HTMLElement {
     const c = this._config;
     const pool = this._state(c.pool_entity);
     const status = this._state(this._pick(c.status_entity));
-    const modeTimes = (status && status.attributes && status.attributes.mode_time_today) || {};
+    const statusAttrs = (status && status.attributes) || {};
+    const modeTimes = statusAttrs.mode_time_today || {};
+    // v0.14 UI flags. Defaults preserve pre-v0.14 behavior when the
+    // backend hasn't shipped these yet (older HA install with a brand
+    // new card.js).
+    const hasElectrolyzer = statusAttrs.has_electrolyzer !== false;
+    const showIllustration = statusAttrs.show_illustration !== false;
+    const chemistryEnabled = statusAttrs.chemistry_enabled !== false;
     const mode = this._state(this._pick(c.mode_entity));
     const start = this._state(this._pick(c.start_entity));
     const end = this._state(this._pick(c.end_entity));
@@ -186,6 +193,7 @@ class PoolPumpCard extends HTMLElement {
           </div>
         </div>
 
+        ${showIllustration ? `
         <div class="visual ${pumpTarget && pumpTarget.state === "on" ? "running" : ""}">
           ${imageUrl
             ? `<img class="pool-img" src="${imageUrl}" alt="Pool" />`
@@ -201,6 +209,18 @@ class PoolPumpCard extends HTMLElement {
             </div>
           </div>
         </div>
+        ` : `
+        <div class="visual-compact">
+          <div class="hero-temp ${tempTone}" data-entity="${this._pick(c.temperature_entity) || ""}">
+            <span class="hero-temp-value">${tempStr}</span>
+            <span class="hero-temp-label">T° eau</span>
+          </div>
+          <div class="hero-status" data-entity="${this._pick(c.status_entity) || ""}">
+            <span class="hero-status-value">${statusStr}</span>
+            ${powerVal != null ? `<span class="hero-status-meta">⚡ ${powerVal} W${energyVal != null ? ` · ${energyVal} kWh` : ""}</span>` : ""}
+          </div>
+        </div>
+        `}
 
         ${this._renderTimeline(status)}
 
@@ -215,30 +235,37 @@ class PoolPumpCard extends HTMLElement {
         <div class="actions actions-modes">
           ${actionBtn("mdi:autorenew",   "Auto",        null, modeState === "auto",      modeTimes.auto,      "tone-auto")}
           ${actionBtn("mdi:play",        "Marche",      null, modeState === "on",        modeTimes.on,        "tone-on")}
-          ${actionBtn("mdi:water-pump",  "Pompe seule", null, modeState === "pump_only", modeTimes.pump_only, "tone-pump-only")}
+          ${hasElectrolyzer ? actionBtn("mdi:water-pump", "Pompe seule", null, modeState === "pump_only", modeTimes.pump_only, "tone-pump-only") : ""}
           ${actionBtn("mdi:stop",        "Arrêt",       null, modeState === "off",       modeTimes.off,       "tone-off")}
         </div>
 
         <div class="actions actions-utils">
-          ${actionBtn("mdi:auto-fix",    "Routines",    null, false,                       null,                 "tone-util")}
-          ${actionBtn("mdi:test-tube",   "Chimie",      null, modeState === "maintenance", modeTimes.maintenance, "tone-util")}
-          ${actionBtn("mdi:filter",      "Backwash",    null, false,                       null,                 "tone-util")}
+          ${(hasElectrolyzer && chemistryEnabled) ? actionBtn("mdi:auto-fix",    "Routines",    null, false,                       null,                 "tone-util") : ""}
+          ${(hasElectrolyzer && chemistryEnabled) ? actionBtn("mdi:test-tube",   "Chimie",      null, modeState === "maintenance", modeTimes.maintenance, "tone-util") : ""}
+          ${actionBtn("mdi:filter",      "Backwash",    null, false,                       null,                 "tone-util", "Forcer la pompe + cellule OFF pendant la durée configurée (5 min par défaut), puis retour automatique en Auto. À lancer après nettoyage manuel du filtre à sable.")}
           ${actionBtn("mdi:refresh",     "Refresh",     null, false,                       null,                 "tone-util")}
         </div>
       </div>
     `;
 
-    // Bind the buttons. New layout: modes row (Auto/Marche/Pompe/Arrêt)
-    // followed by utils row (Routines/Chimie/Backwash/Refresh).
-    const btns = this._root.querySelectorAll(".action-btn");
-    btns[0].onclick = () => this._setMode("auto");
-    btns[1].onclick = () => this._setMode("on");
-    btns[2].onclick = () => this._setMode("pump_only");
-    btns[3].onclick = () => this._setMode("off");
-    btns[4].onclick = () => this._openRoutines();
-    btns[5].onclick = () => this._openMaintenance();
-    btns[6].onclick = () => this._backwash();
-    btns[7].onclick = () => this._refresh();
+    // Bind the buttons dynamically. The layout is now conditional on
+    // has_electrolyzer / chemistry_enabled, so the index-based binding
+    // from earlier versions doesn't work — use the button label
+    // (passed via the `title` attribute) as the discriminator.
+    const handlers = {
+      "Auto":         () => this._setMode("auto"),
+      "Marche":       () => this._setMode("on"),
+      "Pompe seule":  () => this._setMode("pump_only"),
+      "Arrêt":        () => this._setMode("off"),
+      "Routines":     () => this._openRoutines(),
+      "Chimie":       () => this._openMaintenance(),
+      "Backwash":     () => this._backwash(),
+      "Refresh":      () => this._refresh(),
+    };
+    this._root.querySelectorAll(".action-btn").forEach((btn) => {
+      const label = btn.getAttribute("title") || "";
+      if (handlers[label]) btn.onclick = handlers[label];
+    });
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -691,15 +718,19 @@ function renderMaintenanceModal(chemistry, recos) {
   `;
 }
 
-function actionBtn(icon, label, _onclick, active, seconds, tone) {
+function actionBtn(icon, label, _onclick, active, seconds, tone, tooltip) {
   const time = seconds != null && seconds > 0
     ? `<span class="btn-time">${fmtSeconds(seconds)}</span>`
     : "";
   const cls = ["action-btn"];
   if (active) cls.push("active");
   if (tone) cls.push(tone);
+  // `title` is reused for keyed event binding (see _render), so it must
+  // stay the label string. The tooltip extension piggybacks via a data
+  // attribute the CSS turns into a hover tooltip.
+  const tip = tooltip ? ` data-tooltip="${tooltip.replace(/"/g, "&quot;")}"` : "";
   return `
-    <button class="${cls.join(" ")}" title="${label}">
+    <button class="${cls.join(" ")}" title="${label}"${tip}>
       <ha-icon icon="${icon}"></ha-icon>
       <span class="btn-label">${label}</span>
       ${time}
@@ -804,6 +835,45 @@ const STYLES = `
   .mode-pill.mode-pump_only    { background: linear-gradient(135deg, #fb8c00, #e65100); }
   .mode-pill.mode-off          { background: linear-gradient(135deg, #757575, #424242); }
   .mode-pill.mode-maintenance  { background: linear-gradient(135deg, #8e24aa, #5e35b1); }
+  /* Hover tooltip from data-tooltip attribute (Backwash button etc.) */
+  .action-btn[data-tooltip]:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.92);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+    width: 220px;
+    text-align: left;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .action-btn { position: relative; }
+
+  /* Compact hero (used when show_illustration is off) — replaces the
+     pool image but keeps the temperature + status cards. */
+  .visual-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 12px;
+    background: var(--pp-bg-tint);
+    border: 1px solid rgba(3,169,244,0.10);
+  }
+  .visual-compact .hero-temp,
+  .visual-compact .hero-status {
+    background: rgba(255,255,255,0.7);
+  }
+
   /* ---------- Visual (pool image + hero stats) ---------- */
   .visual {
     border-radius: 14px;
