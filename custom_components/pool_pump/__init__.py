@@ -9,6 +9,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, URL_BASE, VERSION
@@ -16,6 +17,11 @@ from .coordinator import PoolPumpCoordinator
 from .frontend_setup import JSModuleRegistration
 
 _LOGGER = logging.getLogger(__name__)
+
+# This integration is configured via the UI only (config entry). The
+# explicit schema silences Hassfest's CONFIG_SCHEMA warning and makes it
+# clear there is no YAML configuration to validate.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = [
     Platform.SENSOR,
