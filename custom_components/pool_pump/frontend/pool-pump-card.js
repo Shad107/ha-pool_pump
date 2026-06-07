@@ -10,9 +10,26 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.15.0";
+const CARD_VERSION = "0.16.0";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
+
+// Debug helper. Off by default. Two ways to enable, persistent across reloads:
+//   1) per-card: add `debug: true` to the card YAML
+//   2) global: in DevTools console run
+//        localStorage.setItem("pool-pump-card-debug", "1")
+//      then reload. Set to "0" or remove the key to disable.
+function _ppDebugOn(cardConfig) {
+  if (cardConfig && cardConfig.debug === true) return true;
+  try {
+    return localStorage.getItem("pool-pump-card-debug") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+const _pplog = (instance, ...args) => {
+  if (instance && instance._debug) console.warn("[pool-pump-card]", ...args);
+};
 
 class PoolPumpCard extends HTMLElement {
   static async getStubConfig(hass) {
@@ -56,6 +73,9 @@ class PoolPumpCard extends HTMLElement {
   }
 
   setConfig(config) {
+    this._debug = _ppDebugOn(config);
+    _pplog(this, "setConfig() called", { config, version: CARD_VERSION });
+    try {
     if (!config.pool_entity) {
       throw new Error("pool_entity is required");
     }
@@ -77,8 +97,22 @@ class PoolPumpCard extends HTMLElement {
       energy_today_entity: config.energy_today_entity ?? this._derive(config.pool_entity, "sensor", "energie_aujourd_hui", "energy_today"),
       pump_switch: config.pump_switch ?? null,
       electrolyzer_switch: config.electrolyzer_switch ?? null,
+      debug: config.debug === true,
     };
+    _pplog(this, "_config built", this._config);
     this._render();
+    } catch (e) {
+      // Re-throw so HA shows its standard "Configuration error" UI, but
+      // first log enough context to diagnose recurring intermittent
+      // failures (entity not yet loaded, hass attaching out of order, …).
+      console.error("[pool-pump-card] setConfig FAILED", e, {
+        config,
+        hasShadow: !!this.shadowRoot,
+        isConnected: this.isConnected,
+        stack: e && e.stack,
+      });
+      throw e;
+    }
   }
 
   _derive(refEntity, domain, ...candidates) {
@@ -95,8 +129,27 @@ class PoolPumpCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const firstAttach = !this._hass;
     this._hass = hass;
-    this._render();
+    if (firstAttach) _pplog(this, "First hass attached", { hasConfig: !!this._config });
+    try {
+      this._render();
+    } catch (e) {
+      // Don't rethrow on hass update — it would tear down the card and
+      // surface as the generic "Configuration error". Instead, show an
+      // inline soft error so the user knows where to look.
+      console.error("[pool-pump-card] _render FAILED in set hass()", e, {
+        config: this._config,
+        stack: e && e.stack,
+      });
+      if (this._root) {
+        this._root.innerHTML = `<div style="padding:12px;color:var(--error-color,#c00)">
+          <ha-icon icon="mdi:alert-circle"></ha-icon>
+          Render error: <code>${(e && e.message) || e}</code><br>
+          <small>DevTools Console (filter [pool-pump-card]) for the full stack.</small>
+        </div>`;
+      }
+    }
   }
 
   _pick(entityCandidates) {
@@ -115,8 +168,12 @@ class PoolPumpCard extends HTMLElement {
   }
 
   _render() {
-    if (!this._config) return;
+    if (!this._config) {
+      _pplog(this, "_render skipped — no _config yet");
+      return;
+    }
     if (!this.shadowRoot) {
+      _pplog(this, "First render — attaching shadowRoot");
       this.attachShadow({ mode: "open" });
       this.shadowRoot.appendChild(document.createElement("style")).textContent = STYLES;
       this._root = document.createElement("ha-card");
@@ -136,6 +193,30 @@ class PoolPumpCard extends HTMLElement {
 
     const c = this._config;
     const pool = this._state(c.pool_entity);
+    if (this._debug && !this._loggedFirstFullRender) {
+      this._loggedFirstFullRender = true;
+      const resolved = {
+        pool: c.pool_entity,
+        mode: this._pick(c.mode_entity),
+        status: this._pick(c.status_entity),
+        start: this._pick(c.start_entity),
+        end: this._pick(c.end_entity),
+        duration: this._pick(c.duration_entity),
+        temperature: this._pick(c.temperature_entity),
+        heatwave: this._pick(c.heatwave_entity),
+        pump_target: this._pick(c.pump_target_entity),
+        power: this._pick(c.power_entity),
+        energy_today: this._pick(c.energy_today_entity),
+      };
+      const missing = Object.entries(resolved)
+        .filter(([, eid]) => eid && !this._hass.states[eid])
+        .map(([k, eid]) => `${k}=${eid}`);
+      _pplog(this, "First full render", {
+        resolved,
+        poolState: pool ? { state: pool.state, hasAttrs: !!pool.attributes } : null,
+        missing,
+      });
+    }
     const status = this._state(this._pick(c.status_entity));
     const statusAttrs = (status && status.attributes) || {};
     const modeTimes = statusAttrs.mode_time_today || {};
