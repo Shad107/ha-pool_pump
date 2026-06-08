@@ -10,7 +10,7 @@
  * Compatible with Home Assistant >= 2024.1.
  */
 
-const CARD_VERSION = "0.16.1";
+const CARD_VERSION = "0.16.2";
 
 const HA_TEMPLATE_RE = /^(\w+)\.(\w+)$/;
 
@@ -75,7 +75,9 @@ class PoolPumpCard extends HTMLElement {
   setConfig(config) {
     this._debug = _ppDebugOn(config);
     _pplog(this, "setConfig() called", { config, version: CARD_VERSION });
-    try {
+    // Real config errors (broken YAML) — let HA show its standard error UI.
+    // Transient errors (entities not yet loaded) are handled in _render which
+    // shows a "loading" placeholder and re-renders on every hass update.
     if (!config.pool_entity) {
       throw new Error("pool_entity is required");
     }
@@ -100,18 +102,19 @@ class PoolPumpCard extends HTMLElement {
       debug: config.debug === true,
     };
     _pplog(this, "_config built", this._config);
-    this._render();
+    // Try a first render. If it fails (entities not yet loaded, hass attaching
+    // out of order…) DON'T throw — the card will retry on every hass update,
+    // and the user sees a "loading" placeholder until the entities arrive.
+    // This avoids the dead "Erreur de configuration" state HA shows when
+    // setConfig throws, which sticks until the user manually reloads the page.
+    try {
+      this._render();
     } catch (e) {
-      // Re-throw so HA shows its standard "Configuration error" UI, but
-      // first log enough context to diagnose recurring intermittent
-      // failures (entity not yet loaded, hass attaching out of order, …).
-      console.error("[pool-pump-card] setConfig FAILED", e, {
-        config,
-        hasShadow: !!this.shadowRoot,
-        isConnected: this.isConnected,
-        stack: e && e.stack,
-      });
-      throw e;
+      console.error(
+        "[pool-pump-card] _render FAILED in setConfig — will retry on hass update",
+        e,
+        { config, hasShadow: !!this.shadowRoot, stack: e && e.stack }
+      );
     }
   }
 
@@ -235,10 +238,23 @@ class PoolPumpCard extends HTMLElement {
     const pumpTarget = this._state(this._pick(c.pump_target_entity));
 
     if (!pool) {
+      // Entity not in this._hass.states yet. Could be:
+      //   (a) transient: HA still starting up, integration loading entities
+      //   (b) permanent: user mistyped pool_entity in YAML
+      // We can't tell the difference here — and we don't want to surface a
+      // permanent "Erreur de configuration" for the transient case. So we
+      // show a soft "loading" placeholder and re-render on every hass update;
+      // if the entity never arrives, the placeholder stays and the user can
+      // check DevTools console (entity_id is logged below).
+      _pplog(this, "pool entity not in states — placeholder shown", {
+        pool_entity: c.pool_entity,
+        hasAnyState: this._hass && Object.keys(this._hass.states).length > 0,
+      });
       this._root.innerHTML = `
-        <div class="error">
-          <ha-icon icon="mdi:alert-circle"></ha-icon>
-          Entity not found: <code>${c.pool_entity}</code>
+        <div class="placeholder">
+          <ha-icon icon="mdi:pool"></ha-icon>
+          <div class="placeholder-title">${c.title || "Piscine"}</div>
+          <div class="placeholder-subtitle">Chargement des données…</div>
         </div>`;
       return;
     }
