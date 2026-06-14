@@ -14,6 +14,7 @@ fallback for YAML-mode dashboards.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,21 @@ from .const import JSMODULES, URL_BASE
 _LOGGER = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
+
+
+_HASH_CACHE: dict[str, str] = {}
+
+
+def _read_content_hash(filepath: Path) -> str:
+    """Synchronous SHA256 (8-char hex) of a file. Cached per HA process —
+    JS bytes only change on integration upgrade, which forces a restart."""
+    key = str(filepath)
+    if key not in _HASH_CACHE:
+        try:
+            _HASH_CACHE[key] = hashlib.sha256(filepath.read_bytes()).hexdigest()[:8]
+        except OSError:
+            _HASH_CACHE[key] = "0"
+    return _HASH_CACHE[key]
 
 
 class JSModuleRegistration:
@@ -66,6 +82,18 @@ class JSModuleRegistration:
 
         await _check_loaded(0)
 
+    async def _async_desired_url(self, module: dict) -> str:
+        """Compose the resource URL using the JS file's content hash as a
+        cache-bust token. Same bytes → same URL → browser cache hit. Changed
+        bytes → new URL → forced refetch. The integration version is kept
+        for human-readability. File I/O runs in an executor to avoid
+        blocking the event loop."""
+        path = f"{URL_BASE}/{module['filename']}"
+        h = await self.hass.async_add_executor_job(
+            _read_content_hash, FRONTEND_DIR / module["filename"]
+        )
+        return f"{path}?v={module['version']}&h={h}"
+
     async def _async_register_modules(self) -> None:
         existing_resources = [
             r for r in self.lovelace.resources.async_items()
@@ -74,34 +102,35 @@ class JSModuleRegistration:
 
         for module in JSMODULES:
             url = f"{URL_BASE}/{module['filename']}"
+            desired_url = await self._async_desired_url(module)
             registered = False
 
             for resource in existing_resources:
                 if self._get_path(resource["url"]) == url:
                     registered = True
-                    if self._get_version(resource["url"]) != module["version"]:
+                    if resource["url"] != desired_url:
                         _LOGGER.info(
-                            "Updating %s to version %s",
-                            module["name"], module["version"],
+                            "Updating %s resource URL: %s -> %s",
+                            module["name"], resource["url"], desired_url,
                         )
                         await self.lovelace.resources.async_update_item(
                             resource["id"],
                             {
                                 "res_type": "module",
-                                "url": f"{url}?v={module['version']}",
+                                "url": desired_url,
                             },
                         )
                     break
 
             if not registered:
                 _LOGGER.info(
-                    "Registering Lovelace resource: %s v%s",
-                    module["name"], module["version"],
+                    "Registering Lovelace resource: %s v%s (%s)",
+                    module["name"], module["version"], desired_url,
                 )
                 await self.lovelace.resources.async_create_item(
                     {
                         "res_type": "module",
-                        "url": f"{url}?v={module['version']}",
+                        "url": desired_url,
                     }
                 )
 
