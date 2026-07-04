@@ -143,6 +143,7 @@ from .const import (
     RUN_REASON_WINTERIZATION,
     STORAGE_KEY_TEMPLATE,
     STORAGE_VERSION,
+    SWITCH_REAPPLY_COOLDOWN,
     TEMP_MODE_AIR_MODEL,
     TEMP_MODE_WATER,
     UPDATE_INTERVAL,
@@ -485,6 +486,10 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # spamming the weather entity).
         self._forecast_cache: dict[str, Any] = {}
         self._forecast_cache_at: datetime | None = None
+        # Last switch action per entity: {entity_id: (sent_at, target_on)}.
+        # Enforces SWITCH_REAPPLY_COOLDOWN so a Tuya plug that keeps flipping
+        # back to the wrong state doesn't trigger a turn_off every tick.
+        self._switch_last_action: dict[str, tuple[datetime, bool]] = {}
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -1829,8 +1834,31 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         is_on = state.state == STATE_ON
         if target_on == is_on:
             return
+        # Cooldown: if we already asked for this exact target within
+        # SWITCH_REAPPLY_COOLDOWN, the device is flapping (Tuya poll
+        # artefact, plug that bounces back, physical override…). Sending
+        # turn_off every tick would spam services and fatigue the relay.
+        # A *different* target always bypasses the cooldown so a real
+        # mode change or scheduled transition takes effect immediately.
+        now = dt_util.utcnow()
+        last = self._switch_last_action.get(entity_id)
+        if last is not None:
+            last_at, last_target = last
+            if last_target == target_on and now - last_at < SWITCH_REAPPLY_COOLDOWN:
+                _LOGGER.warning(
+                    "%s %s: same target (%s) requested %ss ago, skipping "
+                    "(reason: %s). Device is flapping — check the plug's "
+                    "poll/reporting behaviour.",
+                    label,
+                    entity_id,
+                    "on" if target_on else "off",
+                    int((now - last_at).total_seconds()),
+                    reason,
+                )
+                return
         service = "turn_on" if target_on else "turn_off"
         _LOGGER.info("%s %s → %s (reason: %s)", label, entity_id, service, reason)
+        self._switch_last_action[entity_id] = (now, target_on)
         await self.hass.services.async_call(
             "switch", service, {"entity_id": entity_id}, blocking=False
         )

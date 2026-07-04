@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.16.3"
+VERSION = "0.16.4"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -162,6 +162,15 @@ DEFAULT_ELECTROLYZER_MAX_TEMP = 40.0
 COLD_THRESHOLD_CELSIUS = 13.0
 
 UPDATE_INTERVAL = timedelta(minutes=1)
+
+# Rate-limit the same repeated switch action. If the device keeps flipping
+# back to the "wrong" state (Tuya poll artefact, cloud sync bug, physical
+# button…), we would otherwise spam turn_off / turn_on every tick and
+# fatigue the relay. When we've already asked for the same target within
+# this window, skip and log a warning instead of re-sending. A *changed*
+# target (on ↔ off) always bypasses the cooldown because it reflects a
+# new user/scheduler intent.
+SWITCH_REAPPLY_COOLDOWN = timedelta(minutes=5)
 
 STORAGE_VERSION = 1
 STORAGE_KEY_TEMPLATE = "pool_pump.{entry_id}.water_model"
