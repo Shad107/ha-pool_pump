@@ -2,6 +2,5 @@
   "name": "Pool Pump Manager",
   "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "2024.1.0",
-  "iot_class": "calculated"
+  "homeassistant": "2024.1.0"
 }
