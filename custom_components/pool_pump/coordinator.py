@@ -27,8 +27,8 @@ import logging
 from typing import Any
 
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_call_later
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -490,6 +490,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # Enforces SWITCH_REAPPLY_COOLDOWN so a Tuya plug that keeps flipping
         # back to the wrong state doesn't trigger a turn_off every tick.
         self._switch_last_action: dict[str, tuple[datetime, bool]] = {}
+        # v0.16.5 debug: track the last _apply_switch call per entity so we
+        # can correlate observed state changes with our own commands.
+        # (sent_at_utc, service, reason)
+        self._debug_last_call: dict[str, tuple[datetime, str, str]] = {}
+        self._debug_unsubs: list = []
+        pump_id = options.get(CONF_PUMP_SWITCH)
+        elec_id = options.get(CONF_ELECTROLYZER_SWITCH)
+        watched = [e for e in (pump_id, elec_id) if e]
+        if watched:
+            self._debug_unsubs.append(
+                async_track_state_change_event(
+                    hass, watched, self._debug_on_switch_change
+                )
+            )
 
     async def async_load_persisted(self) -> None:
         """Load the modeled water temp + air samples from disk (once at init)."""
@@ -1857,8 +1871,64 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 )
                 return
         service = "turn_on" if target_on else "turn_off"
-        _LOGGER.info("%s %s → %s (reason: %s)", label, entity_id, service, reason)
+        _LOGGER.warning(
+            "APPLY_SWITCH_CALL: %s %s → %s | was=%s | mode=%s | reason=%s",
+            label,
+            entity_id,
+            service,
+            "on" if is_on else "off",
+            self.mode,
+            reason,
+        )
         self._switch_last_action[entity_id] = (now, target_on)
+        self._debug_last_call[entity_id] = (now, service, reason)
         await self.hass.services.async_call(
             "switch", service, {"entity_id": entity_id}, blocking=False
+        )
+
+    @callback
+    def _debug_on_switch_change(self, event) -> None:
+        """v0.16.5 debug: log every state change on watched switches with
+        the event's context and correlation with our own last command.
+        If a change happens WITHOUT a matching APPLY_SWITCH_CALL in the
+        last ~10 seconds, the change came from OUTSIDE this integration.
+        """
+        entity_id = event.data.get("entity_id")
+        old = event.data.get("old_state")
+        new = event.data.get("new_state")
+        ctx = event.context
+        old_s = old.state if old else "None"
+        new_s = new.state if new else "None"
+        if old_s == new_s:
+            return
+        now = dt_util.utcnow()
+        last = self._debug_last_call.get(entity_id)
+        if last is not None:
+            last_at, last_service, last_reason = last
+            age = (now - last_at).total_seconds()
+            expected = "on" if last_service == "turn_on" else "off"
+            if age <= 10 and new_s == expected:
+                origin = f"US ({age:.1f}s ago, service={last_service}, reason={last_reason})"
+            elif age <= 10:
+                origin = (
+                    f"UNEXPECTED — we called {last_service} {age:.1f}s ago (reason={last_reason}) "
+                    f"but state moved to {new_s}"
+                )
+            else:
+                origin = (
+                    f"EXTERNAL — our last call was {last_service} {age:.1f}s ago "
+                    f"(too old to be us)"
+                )
+        else:
+            origin = "EXTERNAL — we never touched this entity"
+        _LOGGER.warning(
+            "PUMP_STATE_CHANGE: %s %s→%s | ctx.id=%s user_id=%s parent_id=%s | mode=%s | origin=%s",
+            entity_id,
+            old_s,
+            new_s,
+            ctx.id if ctx else None,
+            ctx.user_id if ctx else None,
+            ctx.parent_id if ctx else None,
+            self.mode,
+            origin,
         )
