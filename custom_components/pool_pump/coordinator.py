@@ -1657,6 +1657,29 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
     def _decide_pump(
         self, now: datetime, data: PoolPumpData, water_low_id: str | None
     ) -> tuple[bool, str]:
+        result = self._decide_pump_inner(now, data, water_low_id)
+        in_schedule = any(r.contains(now) for r in data.runs)
+        runs_str = ", ".join(
+            f"{r.start.strftime('%H:%M')}→{r.end.strftime('%H:%M')}" for r in data.runs
+        ) or "none"
+        _LOGGER.warning(
+            "DECIDE_PUMP: mode=%s | now=%s | runs=[%s] | in_schedule=%s | "
+            "backwash=%s maint=%s winter=%s | → target=%s reason=%s",
+            self.mode,
+            now.strftime("%H:%M:%S"),
+            runs_str,
+            in_schedule,
+            data.backwash_active,
+            data.maintenance_active,
+            data.winterization_active,
+            result[0],
+            result[1],
+        )
+        return result
+
+    def _decide_pump_inner(
+        self, now: datetime, data: PoolPumpData, water_low_id: str | None
+    ) -> tuple[bool, str]:
         # Backwash takes precedence over everything — pump must run.
         if data.backwash_active:
             return True, RUN_REASON_BACKWASH
