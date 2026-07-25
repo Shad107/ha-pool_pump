@@ -177,10 +177,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Unload a config entry.
+
+    v0.16.7 — every subscription owned by the coordinator MUST be
+    cancelled here or the old instance keeps ticking after reload/upgrade
+    and races with the fresh one on the same switch. Symptom: pump flaps
+    outside auto schedule (=old coord in mode=auto wants OFF, new one in
+    pump_only wants ON, so they undo each other every minute).
+    """
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        coordinator: PoolPumpCoordinator | None = hass.data.get(DOMAIN, {}).pop(
+            entry.entry_id, None
+        )
+        if coordinator is not None:
+            await coordinator.async_shutdown()
+            for unsub in getattr(coordinator, "_debug_unsubs", []):
+                try:
+                    unsub()
+                except Exception:  # noqa: BLE001
+                    pass
+            coordinator._debug_unsubs = []
+            if coordinator._deferred_refresh_unsub is not None:
+                try:
+                    coordinator._deferred_refresh_unsub()
+                except Exception:  # noqa: BLE001
+                    pass
+                coordinator._deferred_refresh_unsub = None
     return unload_ok
 
 
