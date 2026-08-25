@@ -37,6 +37,11 @@
           "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
           "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
           "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)",
+          "pac_switch": "Switch pompe à chaleur (optionnel)",
+          "pac_post_start_delay": "Délai ON PAC après démarrage pompe (s)",
+          "pac_pre_stop_delay": "Anticipation OFF PAC avant arrêt pompe (s)",
+          "pac_min_temp": "T° eau min PAC (°C ; OFF en dessous)",
+          "pac_power_sensor": "Capteur puissance PAC (W, optionnel)",
           "winterization_start_month": "Mois début hivernage (1-12, 0=désactivé ; ex 11 = nov)",
           "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
           "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
@@ -56,6 +61,8 @@
           "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
           "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)",
           "duration_curve_enabled": "Utiliser une courbe T° → durée perso (remplace la formule T/2)",
+          "duration_at_5c": "Courbe : heures à 5 °C (hivernage actif)",
+          "duration_at_10c": "Courbe : heures à 10 °C (hivernage actif)",
           "duration_at_15c": "Courbe : heures à 15 °C",
           "duration_at_20c": "Courbe : heures à 20 °C",
           "duration_at_25c": "Courbe : heures à 25 °C",
@@ -96,6 +103,11 @@
           "solar_coefficient": "Coefficient solaire (°C/h à plein soleil, défaut 0.6)",
           "pump_power_sensor": "Capteur puissance pompe (W, optionnel)",
           "electrolyzer_power_sensor": "Capteur puissance électrolyseur (W, optionnel)",
+          "pac_switch": "Switch pompe à chaleur (optionnel)",
+          "pac_post_start_delay": "Délai ON PAC après démarrage pompe (s)",
+          "pac_pre_stop_delay": "Anticipation OFF PAC avant arrêt pompe (s)",
+          "pac_min_temp": "T° eau min PAC (°C ; OFF en dessous)",
+          "pac_power_sensor": "Capteur puissance PAC (W, optionnel)",
           "winterization_start_month": "Mois début hivernage (1-12, 0=désactivé ; ex 11 = nov)",
           "winterization_end_month": "Mois fin hivernage (1-12, 0=désactivé ; ex 3 = mars)",
           "backwash_duration_minutes": "Durée backwash par défaut (minutes)",
@@ -115,6 +127,8 @@
           "filtration_multiplier": "Coefficient durée filtration (1.0 = formule, 1.2 = +20%, 0.8 = -20%)",
           "winterization_override": "Hivernage forcé (auto = mois, on/off = manuel)",
           "duration_curve_enabled": "Utiliser une courbe T° → durée perso (remplace la formule T/2)",
+          "duration_at_5c": "Courbe : heures à 5 °C (hivernage actif)",
+          "duration_at_10c": "Courbe : heures à 10 °C (hivernage actif)",
           "duration_at_15c": "Courbe : heures à 15 °C",
           "duration_at_20c": "Courbe : heures à 20 °C",
           "duration_at_25c": "Courbe : heures à 25 °C",
@@ -200,6 +214,9 @@
       },
       "electrolyzer_target": {
         "name": "Électrolyseur doit tourner"
+      },
+      "pac_target": {
+        "name": "PAC doit tourner"
       },
       "heatwave": {
         "name": "Mode canicule"

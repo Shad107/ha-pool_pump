@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_ELECTROLYZER_SWITCH,
+    CONF_PAC_POWER_SENSOR,
     CONF_PUMP_POWER_SENSOR,
     DOMAIN,
     ROUTINES,
@@ -38,7 +39,11 @@ async def async_setup_entry(
     ]
     # Power/energy entities only when at least one power sensor is configured.
     opts = {**entry.data, **entry.options}
-    if opts.get(CONF_PUMP_POWER_SENSOR) or opts.get(CONF_ELECTROLYZER_POWER_SENSOR):
+    if (
+        opts.get(CONF_PUMP_POWER_SENSOR)
+        or opts.get(CONF_ELECTROLYZER_POWER_SENSOR)
+        or opts.get(CONF_PAC_POWER_SENSOR)
+    ):
         entities.extend([
             CurrentPowerSensor(coordinator, entry),
             EnergyTodaySensor(coordinator, entry),
@@ -137,6 +142,7 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             "pump_available": d.pump_available,
             # v0.14 UI flags the card reads to decide what to render
             "has_electrolyzer": d.has_electrolyzer,
+            "has_pac": d.has_pac,
             "show_illustration": d.show_illustration,
             "chemistry_enabled": d.chemistry_enabled,
             "air_temperature_raw": d.air_temperature_raw,
@@ -201,6 +207,9 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
         if d.has_electrolyzer:
             attrs["electrolyzer_block_reason"] = d.electrolyzer_block_reason
             attrs["electrolyzer_available"] = d.electrolyzer_available
+        if d.has_pac:
+            attrs["pac_block_reason"] = d.pac_block_reason
+            attrs["pac_available"] = d.pac_available
         if not d.chemistry_enabled:
             attrs.pop("chemistry", None)
             attrs.pop("chemistry_recommendations", None)
@@ -272,6 +281,7 @@ class CurrentPowerSensor(PoolPumpEntity, SensorEntity):
         return {
             "pump_power_w": d.pump_power_w,
             "electrolyzer_power_w": d.electrolyzer_power_w,
+            "pac_power_w": d.pac_power_w,
         }
 
 

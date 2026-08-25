@@ -37,6 +37,11 @@
           "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
           "pump_power_sensor": "Pump power sensor (W, optional)",
           "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)",
+          "pac_switch": "Heat pump switch (optional)",
+          "pac_post_start_delay": "Heat pump ON delay after pump start (s)",
+          "pac_pre_stop_delay": "Heat pump OFF lead time before pump stop (s)",
+          "pac_min_temp": "Heat pump min water temp (°C; off below)",
+          "pac_power_sensor": "Heat pump power sensor (W, optional)",
           "winterization_start_month": "Winterization start month (1-12, 0=disabled; e.g. 11 = Nov)",
           "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
           "backwash_duration_minutes": "Default backwash duration (minutes)",
@@ -56,6 +61,8 @@
           "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
           "winterization_override": "Winterization override (auto = month range, on/off = manual)",
           "duration_curve_enabled": "Use a custom temperature → duration curve (overrides T/2 formula)",
+          "duration_at_5c": "Curve: hours at 5 °C (active wintering)",
+          "duration_at_10c": "Curve: hours at 10 °C (active wintering)",
           "duration_at_15c": "Curve: hours at 15 °C",
           "duration_at_20c": "Curve: hours at 20 °C",
           "duration_at_25c": "Curve: hours at 25 °C",
@@ -96,6 +103,11 @@
           "solar_coefficient": "Solar coupling coefficient (°C/h at full sun, default 0.6)",
           "pump_power_sensor": "Pump power sensor (W, optional)",
           "electrolyzer_power_sensor": "Electrolyzer power sensor (W, optional)",
+          "pac_switch": "Heat pump switch (optional)",
+          "pac_post_start_delay": "Heat pump ON delay after pump start (s)",
+          "pac_pre_stop_delay": "Heat pump OFF lead time before pump stop (s)",
+          "pac_min_temp": "Heat pump min water temp (°C; off below)",
+          "pac_power_sensor": "Heat pump power sensor (W, optional)",
           "winterization_start_month": "Winterization start month (1-12, 0=disabled; e.g. 11 = Nov)",
           "winterization_end_month": "Winterization end month (1-12, 0=disabled; e.g. 3 = March)",
           "backwash_duration_minutes": "Default backwash duration (minutes)",
@@ -115,6 +127,8 @@
           "filtration_multiplier": "Filtration duration multiplier (1.0 = formula, 1.2 = +20%, 0.8 = -20%)",
           "winterization_override": "Winterization override (auto = month range, on/off = manual)",
           "duration_curve_enabled": "Use a custom temperature → duration curve (overrides T/2 formula)",
+          "duration_at_5c": "Curve: hours at 5 °C (active wintering)",
+          "duration_at_10c": "Curve: hours at 10 °C (active wintering)",
           "duration_at_15c": "Curve: hours at 15 °C",
           "duration_at_20c": "Curve: hours at 20 °C",
           "duration_at_25c": "Curve: hours at 25 °C",
@@ -200,6 +214,9 @@
       },
       "electrolyzer_target": {
         "name": "Electrolyzer should be on"
+      },
+      "pac_target": {
+        "name": "Heat pump should be on"
       },
       "heatwave": {
         "name": "Heatwave override"
