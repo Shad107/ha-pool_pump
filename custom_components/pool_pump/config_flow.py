@@ -27,6 +27,8 @@ from .const import (
     CONF_CUSTOM_POOL_LENGTH,
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
+    CONF_DURATION_AT_5C,
+    CONF_DURATION_AT_10C,
     CONF_DURATION_AT_15C,
     CONF_DURATION_AT_20C,
     CONF_DURATION_AT_25C,
@@ -43,6 +45,11 @@ from .const import (
     CONF_ELECTROLYZER_POST_START_DELAY,
     CONF_ELECTROLYZER_PRE_STOP_DELAY,
     CONF_ELECTROLYZER_SWITCH,
+    CONF_PAC_MIN_TEMP,
+    CONF_PAC_POST_START_DELAY,
+    CONF_PAC_POWER_SENSOR,
+    CONF_PAC_PRE_STOP_DELAY,
+    CONF_PAC_SWITCH,
     CONF_FORECAST_SENSOR,
     CONF_HEATWAVE_THRESHOLD,
     CONF_MAX_HOURS,
@@ -74,6 +81,8 @@ from .const import (
     DEFAULT_CHEMISTRY_ENABLED,
     DEFAULT_CUSTOM_POOL_INGROUND,
     DEFAULT_CUSTOM_POOL_SHAPE,
+    DEFAULT_DURATION_AT_5C,
+    DEFAULT_DURATION_AT_10C,
     DEFAULT_DURATION_AT_15C,
     DEFAULT_DURATION_AT_20C,
     DEFAULT_DURATION_AT_25C,
@@ -91,6 +100,9 @@ from .const import (
     DEFAULT_ELECTROLYZER_MIN_TEMP,
     DEFAULT_ELECTROLYZER_POST_START_DELAY,
     DEFAULT_ELECTROLYZER_PRE_STOP_DELAY,
+    DEFAULT_PAC_MIN_TEMP,
+    DEFAULT_PAC_POST_START_DELAY,
+    DEFAULT_PAC_PRE_STOP_DELAY,
     DEFAULT_HEATWAVE_THRESHOLD,
     DEFAULT_MAX_HOURS,
     DEFAULT_MIN_HOURS,
@@ -212,6 +224,9 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
     )
     detected_elec_power = _detect_power_sensor_for_switch(
         hass, current.get(CONF_ELECTROLYZER_SWITCH)
+    )
+    detected_pac_power = _detect_power_sensor_for_switch(
+        hass, current.get(CONF_PAC_SWITCH)
     )
 
     # Core temperature source — exposed in options too so users can
@@ -439,6 +454,24 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 ),
             ): bool,
             vol.Optional(
+                CONF_DURATION_AT_5C,
+                default=float(
+                    current.get(CONF_DURATION_AT_5C, DEFAULT_DURATION_AT_5C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
+                CONF_DURATION_AT_10C,
+                default=float(
+                    current.get(CONF_DURATION_AT_10C, DEFAULT_DURATION_AT_10C)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=24, step=0.25, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="h")
+            ),
+            vol.Optional(
                 CONF_DURATION_AT_15C,
                 default=float(
                     current.get(CONF_DURATION_AT_15C, DEFAULT_DURATION_AT_15C)
@@ -552,6 +585,32 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 NumberSelectorConfig(min=25, max=50, step=0.5, mode=NumberSelectorMode.BOX)
             ),
             vol.Optional(
+                CONF_PAC_SWITCH,
+                description={"suggested_value": current.get(CONF_PAC_SWITCH)},
+            ): EntitySelector(EntitySelectorConfig(domain="switch")),
+            vol.Optional(
+                CONF_PAC_POST_START_DELAY,
+                default=current.get(
+                    CONF_PAC_POST_START_DELAY, DEFAULT_PAC_POST_START_DELAY
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=900, step=10, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_PAC_PRE_STOP_DELAY,
+                default=current.get(
+                    CONF_PAC_PRE_STOP_DELAY, DEFAULT_PAC_PRE_STOP_DELAY
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=1800, step=10, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_PAC_MIN_TEMP,
+                default=current.get(CONF_PAC_MIN_TEMP, DEFAULT_PAC_MIN_TEMP),
+            ): NumberSelector(
+                NumberSelectorConfig(min=0, max=30, step=0.5, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
                 CONF_WATER_LEVEL_CRITICAL,
                 description={"suggested_value": current.get(CONF_WATER_LEVEL_CRITICAL)},
             ): EntitySelector(EntitySelectorConfig(domain="binary_sensor")),
@@ -569,6 +628,15 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 description={
                     "suggested_value": current.get(CONF_ELECTROLYZER_POWER_SENSOR)
                     or detected_elec_power
+                },
+            ): EntitySelector(
+                EntitySelectorConfig(domain="sensor", device_class="power")
+            ),
+            vol.Optional(
+                CONF_PAC_POWER_SENSOR,
+                description={
+                    "suggested_value": current.get(CONF_PAC_POWER_SENSOR)
+                    or detected_pac_power
                 },
             ): EntitySelector(
                 EntitySelectorConfig(domain="sensor", device_class="power")

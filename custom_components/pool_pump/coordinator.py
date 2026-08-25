@@ -42,6 +42,8 @@ from .const import (
     CONF_CUSTOM_POOL_LENGTH,
     CONF_CUSTOM_POOL_SHAPE,
     CONF_CUSTOM_POOL_WIDTH,
+    CONF_DURATION_AT_5C,
+    CONF_DURATION_AT_10C,
     CONF_DURATION_AT_15C,
     CONF_DURATION_AT_20C,
     CONF_DURATION_AT_25C,
@@ -54,6 +56,8 @@ from .const import (
     CONF_SHOW_ILLUSTRATION,
     CONF_WINTERIZATION_OVERRIDE,
     DEFAULT_CHEMISTRY_ENABLED,
+    DEFAULT_DURATION_AT_5C,
+    DEFAULT_DURATION_AT_10C,
     DEFAULT_DURATION_AT_15C,
     DEFAULT_DURATION_AT_20C,
     DEFAULT_DURATION_AT_25C,
@@ -81,6 +85,11 @@ from .const import (
     CONF_PIVOT_HOUR,
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_ELECTROLYZER_POWER_SENSOR,
+    CONF_PAC_MIN_TEMP,
+    CONF_PAC_POST_START_DELAY,
+    CONF_PAC_POWER_SENSOR,
+    CONF_PAC_PRE_STOP_DELAY,
+    CONF_PAC_SWITCH,
     CONF_POOL_HAS_COVER,
     CONF_POOL_IMAGE_URL,
     CONF_POOL_PRESET,
@@ -107,6 +116,9 @@ from .const import (
     DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
+    DEFAULT_PAC_MIN_TEMP,
+    DEFAULT_PAC_POST_START_DELAY,
+    DEFAULT_PAC_PRE_STOP_DELAY,
     DEFAULT_FORECAST_PREHEAT_THRESHOLD,
     DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD,
     DEFAULT_SMOOTHING_WINDOW_HOURS,
@@ -126,6 +138,16 @@ from .const import (
     ELEC_BLOCK_MAINTENANCE,
     ELEC_BLOCK_PUMP_ONLY,
     ELEC_BLOCK_WINTERIZATION,
+    PAC_BLOCK_BACKWASH,
+    PAC_BLOCK_MAINTENANCE,
+    PAC_BLOCK_MANUAL,
+    PAC_BLOCK_MARGIN,
+    PAC_BLOCK_NONE,
+    PAC_BLOCK_PUMP_OFF,
+    PAC_BLOCK_PUMP_ONLY,
+    PAC_BLOCK_PUMP_UNAVAILABLE,
+    PAC_BLOCK_TEMP_LOW,
+    PAC_BLOCK_WINTERIZATION,
     MODE_AUTO,
     MODE_MAINTENANCE,
     MODE_OFF,
@@ -215,6 +237,8 @@ class PoolPumpData:
     pump_should_be_on: bool = False
     electrolyzer_should_be_on: bool = False
     electrolyzer_block_reason: str = ELEC_BLOCK_NONE
+    pac_should_be_on: bool = False
+    pac_block_reason: str = PAC_BLOCK_NONE
     reason: str = RUN_REASON_OFF
     mode: str = MODE_AUTO
     heatwave_active: bool = False
@@ -224,6 +248,7 @@ class PoolPumpData:
     pool_bundled_url: str | None = None
     pump_available: bool = True
     electrolyzer_available: bool = True
+    pac_available: bool = True
     air_temperature_smoothed: float | None = None
     water_modeled_raw: float | None = None
     learned_temperature_offset: float = 0.0
@@ -238,6 +263,7 @@ class PoolPumpData:
     tau_hours_effective: float = 0.0
     pump_power_w: float | None = None
     electrolyzer_power_w: float | None = None
+    pac_power_w: float | None = None
     total_power_w: float | None = None
     energy_today_kwh: float = 0.0
     energy_total_kwh: float = 0.0
@@ -254,6 +280,7 @@ class PoolPumpData:
     # v0.14 UI flags consumed by the Lovelace card to conditionally
     # render sections. None of these affect the integration's logic.
     has_electrolyzer: bool = True
+    has_pac: bool = True
     show_illustration: bool = True
     chemistry_enabled: bool = True
 
@@ -497,7 +524,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._debug_unsubs: list = []
         pump_id = options.get(CONF_PUMP_SWITCH)
         elec_id = options.get(CONF_ELECTROLYZER_SWITCH)
-        watched = [e for e in (pump_id, elec_id) if e]
+        pac_id = options.get(CONF_PAC_SWITCH)
+        watched = [e for e in (pump_id, elec_id, pac_id) if e]
         if watched:
             self._debug_unsubs.append(
                 async_track_state_change_event(
@@ -1227,6 +1255,15 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         elec_max = float(
             self.options.get(CONF_ELECTROLYZER_MAX_TEMP, DEFAULT_ELECTROLYZER_MAX_TEMP)
         )
+        pac_post_start = int(
+            self.options.get(CONF_PAC_POST_START_DELAY, DEFAULT_PAC_POST_START_DELAY)
+        )
+        pac_pre_stop = int(
+            self.options.get(CONF_PAC_PRE_STOP_DELAY, DEFAULT_PAC_PRE_STOP_DELAY)
+        )
+        pac_min = float(
+            self.options.get(CONF_PAC_MIN_TEMP, DEFAULT_PAC_MIN_TEMP)
+        )
         offset = float(
             self.options.get(CONF_TEMPERATURE_OFFSET, DEFAULT_TEMPERATURE_OFFSET)
         )
@@ -1384,6 +1421,10 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 )
             ):
                 curve_anchors = [
+                    (5.0, float(self.options.get(
+                        CONF_DURATION_AT_5C, DEFAULT_DURATION_AT_5C))),
+                    (10.0, float(self.options.get(
+                        CONF_DURATION_AT_10C, DEFAULT_DURATION_AT_10C))),
                     (15.0, float(self.options.get(
                         CONF_DURATION_AT_15C, DEFAULT_DURATION_AT_15C))),
                     (20.0, float(self.options.get(
@@ -1424,14 +1465,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
 
         pump_id: str = self.options[CONF_PUMP_SWITCH]
         elec_id: str | None = self.options.get(CONF_ELECTROLYZER_SWITCH)
+        pac_id: str | None = self.options.get(CONF_PAC_SWITCH)
         data.pump_available = self._is_available(pump_id)
         data.electrolyzer_available = (
             self._is_available(elec_id) if elec_id else True
         )
+        data.pac_available = self._is_available(pac_id) if pac_id else True
         self._log_availability_transition(pump_id, data.pump_available, "pump")
         if elec_id:
             self._log_availability_transition(
                 elec_id, data.electrolyzer_available, "electrolyzer"
+            )
+        if pac_id:
+            self._log_availability_transition(
+                pac_id, data.pac_available, "pac"
             )
 
         # Backwash timer
@@ -1529,10 +1576,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             elec_max=elec_max,
             short_cycle_threshold=short_cycle,
         )
+        pac_target, pac_block = self._decide_pac(
+            now,
+            data,
+            post_start=pac_post_start,
+            pre_stop=pac_pre_stop,
+            pac_min=pac_min,
+            short_cycle_threshold=short_cycle,
+        )
 
         data.pump_should_be_on = pump_target
         data.electrolyzer_should_be_on = elec_target
         data.electrolyzer_block_reason = elec_block
+        data.pac_should_be_on = pac_target
+        data.pac_block_reason = pac_block
         data.reason = reason
 
         # Per-mode time accounting: count only the seconds during which
@@ -1559,6 +1616,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         # UI feature flags (v0.14). The card reads these to decide what
         # to render. The integration logic doesn't depend on them.
         data.has_electrolyzer = bool(self.options.get(CONF_ELECTROLYZER_SWITCH))
+        data.has_pac = bool(self.options.get(CONF_PAC_SWITCH))
         data.show_illustration = bool(
             self.options.get(CONF_SHOW_ILLUSTRATION, DEFAULT_SHOW_ILLUSTRATION)
         )
@@ -1599,16 +1657,20 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:
             await self._apply_switch(elec_id, elec_target, "electrolyzer", elec_block)
+        if pac_id:
+            await self._apply_switch(pac_id, pac_target, "pac", pac_block)
 
         # Power and energy accounting (best-effort: requires user to
-        # configure pump_power_sensor / electrolyzer_power_sensor pointing
-        # at smart-plug power readings).
+        # configure pump_power_sensor / electrolyzer_power_sensor / pac_power_sensor
+        # pointing at smart-plug power readings).
         pump_pw = _read_float(self.hass, self.options.get(CONF_PUMP_POWER_SENSOR))
         elec_pw = _read_float(self.hass, self.options.get(CONF_ELECTROLYZER_POWER_SENSOR))
+        pac_pw = _read_float(self.hass, self.options.get(CONF_PAC_POWER_SENSOR))
         data.pump_power_w = pump_pw
         data.electrolyzer_power_w = elec_pw
-        if pump_pw is not None or elec_pw is not None:
-            data.total_power_w = (pump_pw or 0) + (elec_pw or 0)
+        data.pac_power_w = pac_pw
+        if pump_pw is not None or elec_pw is not None or pac_pw is not None:
+            data.total_power_w = (pump_pw or 0) + (elec_pw or 0) + (pac_pw or 0)
 
             # Riemann integration: kWh += W × dt_h / 1000
             today_key = now.date().isoformat()
@@ -1796,6 +1858,78 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             return False, ELEC_BLOCK_MARGIN
 
         return True, ELEC_BLOCK_NONE
+
+    def _decide_pac(
+        self,
+        now: datetime,
+        data: PoolPumpData,
+        *,
+        post_start: int,
+        pre_stop: int,
+        pac_min: float,
+        short_cycle_threshold: int,
+    ) -> tuple[bool, str]:
+        """Decide the heat-pump (PAC) target from the *actual* pump state.
+
+        Same safety model as the cell, with one thing that matters most: the
+        `pre_stop` margin is what cuts the PAC BEFORE the pump stops, so the
+        exchanger keeps being flushed by circulation. Guards:
+        - pump off / unavailable / backwash / winterization / maintenance /
+          off / pump-only mode → PAC forced OFF.
+        - water below `pac_min` → OFF (too-cold water, poor yield / frost).
+        The window helper is shared with the cell (post-start + pre-stop
+        margins applied to each scheduled run).
+        """
+        if not self.options.get(CONF_PAC_SWITCH):
+            return False, PAC_BLOCK_NONE
+        if data.backwash_active:
+            return False, PAC_BLOCK_BACKWASH
+        if data.maintenance_active or self.mode == MODE_MAINTENANCE:
+            return False, PAC_BLOCK_MAINTENANCE
+        if data.winterization_active:
+            return False, PAC_BLOCK_WINTERIZATION
+        if self.mode == MODE_OFF:
+            return False, PAC_BLOCK_MANUAL
+        if self.mode == MODE_PUMP_ONLY:
+            return False, PAC_BLOCK_PUMP_ONLY
+
+        pump_id: str = self.options[CONF_PUMP_SWITCH]
+        pump_state = self.hass.states.get(pump_id)
+        if pump_state is None or pump_state.state == STATE_UNAVAILABLE:
+            return False, PAC_BLOCK_PUMP_UNAVAILABLE
+        if pump_state.state != STATE_ON:
+            return False, PAC_BLOCK_PUMP_OFF
+
+        if data.temperature_used is not None and data.temperature_used < pac_min:
+            return False, PAC_BLOCK_TEMP_LOW
+
+        # In manual ON mode the PAC follows the pump immediately (no margins).
+        if self.mode == MODE_ON:
+            return True, PAC_BLOCK_NONE
+
+        pac_id = self.options.get(CONF_PAC_SWITCH)
+        pac_already_on = False
+        if pac_id is not None:
+            pac_state = self.hass.states.get(pac_id)
+            pac_already_on = pac_state is not None and pac_state.state == STATE_ON
+
+        # Post-start margin (debounced), same as the cell.
+        if self._pump_continuous_on_since is not None:
+            on_for = (now - self._pump_continuous_on_since).total_seconds()
+            if on_for < post_start and not pac_already_on:
+                self._schedule_deferred_refresh(post_start - on_for + 1)
+                return False, PAC_BLOCK_MARGIN
+        elif (
+            not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop)
+            and not pac_already_on
+        ):
+            return False, PAC_BLOCK_MARGIN
+
+        # Pre-stop margin: cut the PAC before the pump stops (flush exchanger).
+        if not _electrolyzer_window_ok(data.runs, now, post_start, pre_stop):
+            return False, PAC_BLOCK_MARGIN
+
+        return True, PAC_BLOCK_NONE
 
     def _is_available(self, entity_id: str | None) -> bool:
         if not entity_id:

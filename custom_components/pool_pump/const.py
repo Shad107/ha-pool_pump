@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.16.7"
+VERSION = "0.17.0"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -48,11 +48,16 @@ CONF_FILTRATION_MULTIPLIER = "filtration_multiplier"
 #   "on"   → force winterization active (pump + cell off)
 #   "off"  → force winterization disabled (ignore month range)
 CONF_WINTERIZATION_OVERRIDE = "winterization_override"
-# User-defined duration curve (5 anchor points at 15/20/25/30/35°C).
+# User-defined duration curve (7 anchor points at 5/10/15/20/25/30/35°C).
 # When enabled, replaces the built-in T/2 formula by linear
-# interpolation between these points. Below 15°C or above 35°C, the
-# closest anchor is reused (no extrapolation).
+# interpolation between these points. The 5°C and 10°C anchors cover the
+# active-wintering ("hivernage actif") range: users can shape a concave /
+# logarithmic-style curve that pulls durations down in cold water for
+# energy economy, which the old 15°C floor (clamp) could not express.
+# Below 5°C or above 35°C, the closest anchor is reused (no extrapolation).
 CONF_DURATION_CURVE_ENABLED = "duration_curve_enabled"
+CONF_DURATION_AT_5C = "duration_at_5c"
+CONF_DURATION_AT_10C = "duration_at_10c"
 CONF_DURATION_AT_15C = "duration_at_15c"
 CONF_DURATION_AT_20C = "duration_at_20c"
 CONF_DURATION_AT_25C = "duration_at_25c"
@@ -69,6 +74,14 @@ CONF_ELECTROLYZER_POST_START_DELAY = "electrolyzer_post_start_delay"
 CONF_ELECTROLYZER_PRE_STOP_DELAY = "electrolyzer_pre_stop_delay"
 CONF_ELECTROLYZER_MIN_TEMP = "electrolyzer_min_temp"
 CONF_ELECTROLYZER_MAX_TEMP = "electrolyzer_max_temp"
+# Heat pump (PAC) — driven like the electrolyzer: a user-provided switch is
+# turned on inside the pump window and, crucially, cut a lead time BEFORE the
+# pump stops so water keeps circulating to flush the heat exchanger.
+CONF_PAC_SWITCH = "pac_switch"
+CONF_PAC_POST_START_DELAY = "pac_post_start_delay"
+CONF_PAC_PRE_STOP_DELAY = "pac_pre_stop_delay"
+CONF_PAC_MIN_TEMP = "pac_min_temp"
+CONF_PAC_POWER_SENSOR = "pac_power_sensor"
 CONF_WATER_LEVEL_CRITICAL = "water_level_critical"
 CONF_SMOOTHING_WINDOW_HOURS = "smoothing_window_hours"
 CONF_SOLAR_POWER_SENSOR = "solar_power_sensor"
@@ -116,8 +129,12 @@ DEFAULT_FILTRATION_MULTIPLIER = 1.0
 DEFAULT_WINTERIZATION_OVERRIDE = "auto"
 WINTERIZATION_OVERRIDE_OPTIONS = ["auto", "on", "off"]
 DEFAULT_DURATION_CURVE_ENABLED = False
-# Defaults reproduce the built-in T/2 formula at the anchor points,
-# so toggling on without further changes is a no-op.
+# Defaults reproduce the built-in formula at each anchor: T/2 from 15°C up,
+# and ~T/3 in the cold-water anchors (5/10°C) — matching the built-in
+# "T/3 below 13°C" economy. Toggling the curve on without editing is a
+# no-op at every anchor. Final value is still clamped to [min, max] hours.
+DEFAULT_DURATION_AT_5C = 1.7
+DEFAULT_DURATION_AT_10C = 3.3
 DEFAULT_DURATION_AT_15C = 7.5
 DEFAULT_DURATION_AT_20C = 10.0
 DEFAULT_DURATION_AT_25C = 12.5
@@ -158,6 +175,12 @@ DEFAULT_ELECTROLYZER_POST_START_DELAY = 120
 DEFAULT_ELECTROLYZER_PRE_STOP_DELAY = 60
 DEFAULT_ELECTROLYZER_MIN_TEMP = 15.0
 DEFAULT_ELECTROLYZER_MAX_TEMP = 40.0
+# PAC (heat pump). Longer pre-stop lead than the cell (default 180 s) so the
+# exchanger is flushed by circulation before the pump stops. Min water temp
+# guards against running the heat pump in too-cold water (low yield / frost).
+DEFAULT_PAC_POST_START_DELAY = 120
+DEFAULT_PAC_PRE_STOP_DELAY = 180
+DEFAULT_PAC_MIN_TEMP = 10.0
 
 COLD_THRESHOLD_CELSIUS = 13.0
 
@@ -227,3 +250,15 @@ ELEC_BLOCK_BACKWASH = "backwash"
 ELEC_BLOCK_WINTERIZATION = "winterization"
 ELEC_BLOCK_PUMP_ONLY = "pump_only"
 ELEC_BLOCK_MAINTENANCE = "maintenance"
+
+# PAC (heat pump) block reasons — same taxonomy as the cell, minus temp_high.
+PAC_BLOCK_NONE = "none"
+PAC_BLOCK_PUMP_OFF = "pump_off"
+PAC_BLOCK_PUMP_UNAVAILABLE = "pump_unavailable"
+PAC_BLOCK_MARGIN = "margin"
+PAC_BLOCK_TEMP_LOW = "temp_low"
+PAC_BLOCK_MANUAL = "manual"
+PAC_BLOCK_BACKWASH = "backwash"
+PAC_BLOCK_WINTERIZATION = "winterization"
+PAC_BLOCK_PUMP_ONLY = "pump_only"
+PAC_BLOCK_MAINTENANCE = "maintenance"
