@@ -1662,7 +1662,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         runs_str = ", ".join(
             f"{r.start.strftime('%H:%M')}→{r.end.strftime('%H:%M')}" for r in data.runs
         ) or "none"
-        _LOGGER.warning(
+        _LOGGER.info(
             "DECIDE_PUMP: mode=%s | now=%s | runs=[%s] | in_schedule=%s | "
             "backwash=%s maint=%s winter=%s | → target=%s reason=%s",
             self.mode,

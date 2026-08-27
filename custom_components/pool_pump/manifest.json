@@ -18,5 +18,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/Shad107/ha-pool_pump/issues",
   "requirements": [],
-  "version": "0.16.7"
+  "version": "0.16.8"
 }
