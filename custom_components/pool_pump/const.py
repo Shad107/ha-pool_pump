@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.16.8"
+VERSION = "0.16.9"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -81,6 +81,7 @@ CONF_WINTERIZATION_START_MONTH = "winterization_start_month"
 CONF_WINTERIZATION_END_MONTH = "winterization_end_month"
 CONF_POOL_IMAGE_URL = "pool_image_url"
 CONF_BACKWASH_DURATION_MINUTES = "backwash_duration_minutes"
+CONF_HAS_BACKWASH = "has_backwash"
 CONF_PUMP_SHORT_CYCLE_THRESHOLD = "pump_short_cycle_threshold"
 CONF_WEATHER_ENTITY = "weather_entity"
 CONF_AUTOTUNE_ENABLED = "autotune_enabled"
@@ -100,6 +101,7 @@ CONF_CHEM_SALT_SENSOR = "chem_salt_sensor"
 CONF_CHEM_ORP_SENSOR = "chem_orp_sensor"
 
 DEFAULT_BACKWASH_DURATION_MINUTES = 5
+DEFAULT_HAS_BACKWASH = True  # sand filter with backwash valve; False = cartridge/sock filter (hide the button)
 DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD = 30  # seconds; brief pump off ignored
 DEFAULT_AUTOTUNE_ENABLED = True
 DEFAULT_AUTOTUNE_WINDOW_DAYS = 30

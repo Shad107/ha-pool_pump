@@ -49,6 +49,7 @@ from .const import (
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
     CONF_BACKWASH_DURATION_MINUTES,
+    CONF_HAS_BACKWASH,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_IMAGE_URL,
@@ -71,6 +72,7 @@ from .const import (
     CONF_WINTERIZATION_START_MONTH,
     DEFAULT_AUTOTUNE_ENABLED,
     DEFAULT_BACKWASH_DURATION_MINUTES,
+    DEFAULT_HAS_BACKWASH,
     DEFAULT_CHEMISTRY_ENABLED,
     DEFAULT_CUSTOM_POOL_INGROUND,
     DEFAULT_CUSTOM_POOL_SHAPE,
@@ -585,6 +587,12 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=12, step=1, mode=NumberSelectorMode.BOX)
             ),
+            vol.Optional(
+                CONF_HAS_BACKWASH,
+                default=bool(
+                    current.get(CONF_HAS_BACKWASH, DEFAULT_HAS_BACKWASH)
+                ),
+            ): bool,
             vol.Optional(
                 CONF_BACKWASH_DURATION_MINUTES,
                 default=current.get(

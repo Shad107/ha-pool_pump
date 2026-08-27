@@ -80,6 +80,7 @@ from .const import (
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
     CONF_BACKWASH_DURATION_MINUTES,
+    CONF_HAS_BACKWASH,
     CONF_ELECTROLYZER_POWER_SENSOR,
     CONF_POOL_HAS_COVER,
     CONF_POOL_IMAGE_URL,
@@ -105,6 +106,7 @@ from .const import (
     DEFAULT_AUTOTUNE_MAX_OFFSET,
     DEFAULT_AUTOTUNE_WINDOW_DAYS,
     DEFAULT_BACKWASH_DURATION_MINUTES,
+    DEFAULT_HAS_BACKWASH,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
     DEFAULT_FORECAST_PREHEAT_THRESHOLD,
@@ -222,6 +224,7 @@ class PoolPumpData:
     pool_svg: str = ""
     pool_image_url: str | None = None
     pool_bundled_url: str | None = None
+    has_backwash: bool = True
     pump_available: bool = True
     electrolyzer_available: bool = True
     air_temperature_smoothed: float | None = None
@@ -1595,6 +1598,11 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.png"
             elif shape == "rect":
                 data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_rect.png"
+
+        # Cartridge/sock filter (no sand) -> no backwash: the card hides the button.
+        data.has_backwash = bool(
+            self.options.get(CONF_HAS_BACKWASH, DEFAULT_HAS_BACKWASH)
+        )
 
         await self._apply_switch(pump_id, pump_target, "pump", reason)
         if elec_id:

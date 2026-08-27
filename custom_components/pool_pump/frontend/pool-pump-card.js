@@ -229,6 +229,7 @@ class PoolPumpCard extends HTMLElement {
     const hasElectrolyzer = statusAttrs.has_electrolyzer !== false;
     const showIllustration = statusAttrs.show_illustration !== false;
     const chemistryEnabled = statusAttrs.chemistry_enabled !== false;
+    const hasBackwash = statusAttrs.has_backwash !== false;
     const mode = this._state(this._pick(c.mode_entity));
     const start = this._state(this._pick(c.start_entity));
     const end = this._state(this._pick(c.end_entity));
@@ -339,7 +340,7 @@ class PoolPumpCard extends HTMLElement {
         <div class="actions actions-utils">
           ${(hasElectrolyzer && chemistryEnabled) ? actionBtn("mdi:auto-fix",    "Routines",    null, false,                       null,                 "tone-util") : ""}
           ${(hasElectrolyzer && chemistryEnabled) ? actionBtn("mdi:test-tube",   "Chimie",      null, modeState === "maintenance", modeTimes.maintenance, "tone-util") : ""}
-          ${actionBtn("mdi:filter",      "Backwash",    null, false,                       null,                 "tone-util", "Forcer la pompe + cellule OFF pendant la durée configurée (5 min par défaut), puis retour automatique en Auto. À lancer après nettoyage manuel du filtre à sable.")}
+          ${hasBackwash ? actionBtn("mdi:filter",      "Backwash",    null, false,                       null,                 "tone-util", "Forcer la pompe + cellule OFF pendant la durée configurée (5 min par défaut), puis retour automatique en Auto. À lancer après nettoyage manuel du filtre à sable.") : ""}
           ${actionBtn("mdi:refresh",     "Refresh",     null, false,                       null,                 "tone-util")}
         </div>
       </div>

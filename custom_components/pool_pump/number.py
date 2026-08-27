@@ -20,7 +20,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import CHEM_PARAMS, DOMAIN
+from .const import (
+    CHEM_PARAMS,
+    CONF_CHEMISTRY_ENABLED,
+    DEFAULT_CHEMISTRY_ENABLED,
+    DOMAIN,
+)
 from .coordinator import PoolPumpCoordinator
 from .entity import PoolPumpEntity
 
@@ -33,6 +38,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PoolPumpCoordinator = hass.data[DOMAIN][entry.entry_id]
+    # Chemistry assistant OFF -> don't create the pH / chlorine / TAC ... inputs
+    # (they'd be dead weight). Toggling the option reloads the entry, so the
+    # numbers appear/disappear when the user enables/disables the assistant.
+    if not coordinator.options.get(CONF_CHEMISTRY_ENABLED, DEFAULT_CHEMISTRY_ENABLED):
+        return
     entities = [
         ChemistryNumber(coordinator, entry, *params) for params in CHEM_PARAMS
     ]

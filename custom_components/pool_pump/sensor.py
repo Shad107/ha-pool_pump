@@ -244,6 +244,7 @@ class PoolGeometrySensor(PoolPumpEntity, SensorEntity):
             "svg": d.pool_svg or "",
             "image_url": d.pool_image_url,
             "bundled_url": d.pool_bundled_url,
+            "has_backwash": d.has_backwash,
         }
 
 
