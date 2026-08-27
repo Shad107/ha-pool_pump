@@ -79,6 +79,7 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_PIVOT_AUTO,
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_HAS_BACKWASH,
     CONF_ELECTROLYZER_POWER_SENSOR,
@@ -107,6 +108,7 @@ from .const import (
     DEFAULT_AUTOTUNE_WINDOW_DAYS,
     DEFAULT_BACKWASH_DURATION_MINUTES,
     DEFAULT_HAS_BACKWASH,
+    DEFAULT_PIVOT_AUTO,
     DEFAULT_ELECTROLYZER_MAX_TEMP,
     DEFAULT_ELECTROLYZER_MIN_TEMP,
     DEFAULT_FORECAST_PREHEAT_THRESHOLD,
@@ -413,6 +415,25 @@ def _pivot_for_day(day: datetime, pivot_hour: int) -> datetime:
     )
 
 
+def _solar_noon_pivot(hass, day: datetime, fallback_hour: int) -> datetime:
+    """Pivot on the real solar noon of `day`, read from sun.sun (next_noon).
+
+    Solar noon varies with longitude, date and the equation of time (typically
+    ~13:40–14:10 local in summer), so this tracks the real daily solar peak
+    instead of a hardcoded hour. Falls back to the fixed hour if sun.sun is
+    unavailable.
+    """
+    st = hass.states.get("sun.sun")
+    noon_iso = st.attributes.get("next_noon") if st else None
+    noon = dt_util.parse_datetime(noon_iso) if noon_iso else None
+    if noon is not None:
+        noon_local = dt_util.as_local(noon)
+        return dt_util.as_local(day).replace(
+            hour=noon_local.hour, minute=noon_local.minute, second=0, microsecond=0
+        )
+    return _pivot_for_day(day, fallback_hour)
+
+
 def _electrolyzer_window_ok(
     runs: list[Run], now: datetime, post_start: int, pre_stop: int
 ) -> bool:
@@ -473,6 +494,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         self._mode_timer_dose_info: dict | None = None  # {product, dose_g, dose_ml, notes}
         # Number entities (per chemistry key) registered by the number platform.
         self._chemistry_numbers: dict[str, "NumberEntity"] = {}
+        self._filtration_multiplier_entity = None
         # Per-mode cumulative time today (seconds). Resets at midnight.
         self._mode_time_today: dict[str, float] = {}
         self._mode_time_date: str | None = None  # YYYY-MM-DD
@@ -1068,6 +1090,19 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         """Track a number entity so the coordinator can read its value."""
         self._chemistry_numbers[key] = entity
 
+    def register_filtration_multiplier(self, entity) -> None:
+        """Track the filtration-multiplier slider so the coordinator reads it live."""
+        self._filtration_multiplier_entity = entity
+
+    def effective_filtration_multiplier(self) -> float:
+        """Live slider value if present, else the stored option."""
+        ent = getattr(self, "_filtration_multiplier_entity", None)
+        if ent is not None and getattr(ent, "_value", None) is not None:
+            return float(ent._value)
+        return float(
+            self.options.get(CONF_FILTRATION_MULTIPLIER, DEFAULT_FILTRATION_MULTIPLIER)
+        )
+
     def reset_mode_time(self) -> None:
         """Wipe the per-mode time accumulators for today.
 
@@ -1378,7 +1413,10 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         data.learned_temperature_offset = self._learned_offset
         data.calibration_points = len(self._calibrations)
 
-        pivot = _pivot_for_day(now, pivot_hour)
+        if self.options.get(CONF_PIVOT_AUTO, DEFAULT_PIVOT_AUTO):
+            pivot = _solar_noon_pivot(self.hass, now, pivot_hour)
+        else:
+            pivot = _pivot_for_day(now, pivot_hour)
         if data.temperature_used is not None:
             curve_anchors: list[tuple[float, float]] | None = None
             if bool(
@@ -1409,11 +1447,8 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             # Apply the user-defined global multiplier, then re-clamp
             # to [min_h, max_h] so we don't blow past the bounds the
             # user has set (e.g. multiplier 1.5 capped at max_hours).
-            mult = float(
-                self.options.get(
-                    CONF_FILTRATION_MULTIPLIER, DEFAULT_FILTRATION_MULTIPLIER
-                )
-            )
+            # The live slider (number entity) overrides the stored option.
+            mult = self.effective_filtration_multiplier()
             duration = max(min_h, min(max_h, duration * mult))
 
             data.duration_hours = duration

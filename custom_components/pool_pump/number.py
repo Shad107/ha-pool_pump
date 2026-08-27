@@ -23,7 +23,9 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     CHEM_PARAMS,
     CONF_CHEMISTRY_ENABLED,
+    CONF_FILTRATION_MULTIPLIER,
     DEFAULT_CHEMISTRY_ENABLED,
+    DEFAULT_FILTRATION_MULTIPLIER,
     DOMAIN,
 )
 from .coordinator import PoolPumpCoordinator
@@ -38,15 +40,63 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PoolPumpCoordinator = hass.data[DOMAIN][entry.entry_id]
+    # Always available: live slider for the filtration-duration coefficient.
+    entities: list[NumberEntity] = [FiltrationMultiplierNumber(coordinator, entry)]
     # Chemistry assistant OFF -> don't create the pH / chlorine / TAC ... inputs
     # (they'd be dead weight). Toggling the option reloads the entry, so the
     # numbers appear/disappear when the user enables/disables the assistant.
-    if not coordinator.options.get(CONF_CHEMISTRY_ENABLED, DEFAULT_CHEMISTRY_ENABLED):
-        return
-    entities = [
-        ChemistryNumber(coordinator, entry, *params) for params in CHEM_PARAMS
-    ]
+    if coordinator.options.get(CONF_CHEMISTRY_ENABLED, DEFAULT_CHEMISTRY_ENABLED):
+        entities += [
+            ChemistryNumber(coordinator, entry, *params) for params in CHEM_PARAMS
+        ]
     async_add_entities(entities)
+
+
+class FiltrationMultiplierNumber(PoolPumpEntity, NumberEntity, RestoreEntity):
+    """Live filtration-duration coefficient as a slider.
+
+    Multiplies the computed daily run time: 1.0 = no change, >1 = longer
+    (e.g. extra swimmers), <1 = shorter (e.g. active wintering). Editable from
+    the card, the HA UI and automations; overrides the stored option and
+    persists across restarts.
+    """
+
+    _attr_mode = NumberMode.SLIDER
+    _attr_native_min_value = 0.3
+    _attr_native_max_value = 3.0
+    _attr_native_step = 0.05
+    _attr_icon = "mdi:speedometer"
+    _attr_translation_key = "filtration_multiplier"
+
+    def __init__(self, coordinator: PoolPumpCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_filtration_multiplier"
+        self._value: float | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (None, "unknown", "unavailable"):
+            try:
+                self._value = float(last_state.state)
+            except (TypeError, ValueError):
+                self._value = None
+        if self._value is None:
+            self._value = float(
+                self.coordinator.options.get(
+                    CONF_FILTRATION_MULTIPLIER, DEFAULT_FILTRATION_MULTIPLIER
+                )
+            )
+        self.coordinator.register_filtration_multiplier(self)
+
+    @property
+    def native_value(self) -> float | None:
+        return self._value
+
+    async def async_set_native_value(self, value: float) -> None:
+        self._value = value
+        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
 
 class ChemistryNumber(PoolPumpEntity, NumberEntity, RestoreEntity):

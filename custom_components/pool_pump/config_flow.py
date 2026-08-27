@@ -48,6 +48,7 @@ from .const import (
     CONF_MAX_HOURS,
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
+    CONF_PIVOT_AUTO,
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_HAS_BACKWASH,
     CONF_ELECTROLYZER_POWER_SENSOR,
@@ -97,6 +98,7 @@ from .const import (
     DEFAULT_MAX_HOURS,
     DEFAULT_MIN_HOURS,
     DEFAULT_PIVOT_HOUR,
+    DEFAULT_PIVOT_AUTO,
     DEFAULT_PUMP_SHORT_CYCLE_THRESHOLD,
     DEFAULT_SMOOTHING_WINDOW_HOURS,
     DEFAULT_SOLAR_COEFFICIENT,
@@ -398,6 +400,10 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=6, step=0.25, mode=NumberSelectorMode.BOX)
             ),
+            vol.Optional(
+                CONF_PIVOT_AUTO,
+                default=bool(current.get(CONF_PIVOT_AUTO, DEFAULT_PIVOT_AUTO)),
+            ): bool,
             vol.Optional(
                 CONF_PIVOT_HOUR,
                 default=current.get(CONF_PIVOT_HOUR, DEFAULT_PIVOT_HOUR),

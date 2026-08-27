@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.16.9"
+VERSION = "0.16.10"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -62,6 +62,7 @@ CONF_MIN_HOURS = "min_hours"
 CONF_MAX_HOURS = "max_hours"
 CONF_BREAK_HOURS = "break_hours"
 CONF_PIVOT_HOUR = "pivot_hour"
+CONF_PIVOT_AUTO = "pivot_auto"  # True = pivot on real solar noon (sun.sun) instead of pivot_hour
 CONF_FORECAST_SENSOR = "forecast_sensor"
 CONF_HEATWAVE_THRESHOLD = "heatwave_threshold"
 CONF_ELECTROLYZER_SWITCH = "electrolyzer_switch"
@@ -155,6 +156,7 @@ DEFAULT_MIN_HOURS = 2.0
 DEFAULT_MAX_HOURS = 24.0
 DEFAULT_BREAK_HOURS = 0.0
 DEFAULT_PIVOT_HOUR = 14
+DEFAULT_PIVOT_AUTO = False  # opt-in: keep the fixed pivot_hour for existing installs
 DEFAULT_HEATWAVE_THRESHOLD = 28.0
 DEFAULT_ELECTROLYZER_POST_START_DELAY = 120
 DEFAULT_ELECTROLYZER_PRE_STOP_DELAY = 60

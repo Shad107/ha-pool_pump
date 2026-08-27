@@ -21,6 +21,7 @@
           "min_hours": "Minimum run duration (hours)",
           "max_hours": "Maximum run duration (hours)",
           "break_hours": "Midday break duration (hours; 0 = no split)",
+          "pivot_auto": "Pivot on real solar noon (auto via the Sun integration; overrides the pivot hour below)",
           "pivot_hour": "Pivot hour (run centered around this hour, local time)",
           "forecast_sensor": "Forecast max temperature sensor (optional)",
           "heatwave_threshold": "Heatwave threshold (°C) — at or above, run max hours",
@@ -81,6 +82,7 @@
           "min_hours": "Minimum run duration (hours)",
           "max_hours": "Maximum run duration (hours)",
           "break_hours": "Midday break duration (hours; 0 = no split)",
+          "pivot_auto": "Pivot on real solar noon (auto via the Sun integration; overrides the pivot hour below)",
           "pivot_hour": "Pivot hour (local time)",
           "forecast_sensor": "Forecast max temperature sensor (optional)",
           "heatwave_threshold": "Heatwave threshold (°C)",
@@ -155,6 +157,7 @@
       }
     },
     "number": {
+      "filtration_multiplier": {"name": "Filtration coefficient"},
       "chem_ph": {"name": "pH"},
       "chem_free_chlorine": {"name": "Free chlorine"},
       "chem_total_chlorine": {"name": "Total chlorine"},
