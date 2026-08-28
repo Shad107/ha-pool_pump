@@ -320,15 +320,7 @@ class PoolPumpCard extends HTMLElement {
         </div>
         `}
 
-        ${this._renderTimeline(status)}
-
-        <div class="schedule-strip">
-          <span class="strip-item"><ha-icon icon="mdi:clock-start"></ha-icon>${startStr}</span>
-          <span class="strip-sep">→</span>
-          <span class="strip-item"><ha-icon icon="mdi:clock-end"></ha-icon>${endStr}</span>
-          <span class="strip-sep">·</span>
-          <span class="strip-item"><ha-icon icon="mdi:timer-sand"></ha-icon>${durStr}</span>
-        </div>
+        ${this._renderTimeline(status, startStr, endStr, durStr)}
 
         <div class="actions actions-modes">
           ${actionBtn("mdi:autorenew",   "Auto",        null, modeState === "auto",      modeTimes.auto,      "tone-auto")}
@@ -372,10 +364,9 @@ class PoolPumpCard extends HTMLElement {
     });
   }
 
-  _renderTimeline(status) {
-    if (!status || !status.attributes || !status.attributes.runs) return "";
-    const runs = status.attributes.runs;
-    if (!runs.length) return "";
+  _renderTimeline(status, startStr, endStr, durStr) {
+    if (!status || !status.attributes) return "";
+    const runs = status.attributes.runs || [];
 
     const now = new Date();
     const startOfDay = new Date(now);
@@ -428,6 +419,13 @@ class PoolPumpCard extends HTMLElement {
         </div>
         <div class="timeline-labels">
           <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+        </div>
+        <div class="schedule-strip">
+          <span class="strip-item"><ha-icon icon="mdi:clock-start"></ha-icon>${startStr}</span>
+          <span class="strip-sep">→</span>
+          <span class="strip-item"><ha-icon icon="mdi:clock-end"></ha-icon>${endStr}</span>
+          <span class="strip-sep">·</span>
+          <span class="strip-item"><ha-icon icon="mdi:timer-sand"></ha-icon>${durStr}</span>
         </div>
         ${extrasHtml}
       </div>
