@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- In-ground round pool, top-3/4 view. Same palette/size as the other
+     illustrations but sunk into a paved deck (no above-ground frame).
+     Hand-drawn for Pool Pump Manager. Free for any use. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 366" width="620" height="366">
+  <!-- Grass background -->
+  <ellipse cx="310" cy="235" rx="315" ry="120" fill="#B3CF38"/>
+  <!-- Paved deck / terrace -->
+  <ellipse cx="310" cy="205" rx="245" ry="98" fill="#DED7C7" stroke="#C4BBA6" stroke-width="2"/>
+  <!-- Coping (margelle) ring -->
+  <ellipse cx="310" cy="195" rx="182" ry="72" fill="#F3F1EA" stroke="#B9B09A" stroke-width="1.5"/>
+  <!-- Water surface, flush with the deck -->
+  <ellipse class="pool-water" cx="310" cy="195" rx="150" ry="57" fill="#7CCBE5" stroke="#2586A6" stroke-width="1"/>
+  <!-- Far underwater wall glimpse (sunk look) -->
+  <path d="M160,195 A150,57 0 0 1 460,195 A150,49 0 0 0 160,195 Z" fill="#2B8DAD" opacity="0.8"/>
+  <!-- Water shimmer -->
+  <ellipse cx="310" cy="198" rx="120" ry="40" fill="#A3D8E9" opacity="0.55"/>
+  <ellipse cx="345" cy="192" rx="70" ry="22" fill="#BCE2EC" opacity="0.55"/>
+
+  <!-- In-ground handrail (chrome) at the near edge -->
+  <g stroke="#C7D2DA" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M362,240 C380,238 384,222 372,214"/>
+    <path d="M380,244 C400,242 404,224 390,216"/>
+  </g>
+  <g stroke="#9BAAB4" stroke-width="1.3" stroke-linecap="round" fill="none">
+    <path d="M362,240 C380,238 384,222 372,214"/>
+    <path d="M380,244 C400,242 404,224 390,216"/>
+  </g>
+</svg>

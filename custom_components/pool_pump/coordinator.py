@@ -1626,13 +1626,23 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
             data.pool_image_url = user_url
         if preset is not None:
             shape = preset.get("shape")
+            # In-ground pools get their own illustrations (sunk into a deck,
+            # no above-ground frame). Detected from the preset (slug/flag) or
+            # the custom-pool option. Above-ground keeps the photorealistic PNG.
+            inground = (
+                bool(preset.get("inground"))
+                or str(preset.get("slug", "")).startswith("inground")
+                or bool(self.options.get(CONF_CUSTOM_POOL_INGROUND))
+            )
+            base = "/pool_pump_card_assets/illustrations/"
             if shape == "round":
-                # PNG since v0.13.4 — photorealistic above-ground frame
-                # pool illustrations. SVGs kept in the repo as fallback
-                # for users with `?legacy_svg=1` in the image URL config.
-                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_round.png"
+                data.pool_bundled_url = base + (
+                    "pool_round_inground.svg" if inground else "pool_round.png"
+                )
             elif shape == "rect":
-                data.pool_bundled_url = "/pool_pump_card_assets/illustrations/pool_rect.png"
+                data.pool_bundled_url = base + (
+                    "pool_rect_inground.svg" if inground else "pool_rect.png"
+                )
 
         # Cartridge/sock filter (no sand) -> no backwash: the card hides the button.
         data.has_backwash = bool(

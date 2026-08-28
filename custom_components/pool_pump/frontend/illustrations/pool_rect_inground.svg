@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- In-ground rectangular pool, 3/4 axonometric view. Same palette/size as
+     pool_rect.svg but sunk into a paved deck (no above-ground frame walls).
+     Hand-drawn for Pool Pump Manager. Free for any use. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 366" width="620" height="366">
+  <!-- Grass background -->
+  <ellipse cx="310" cy="250" rx="312" ry="112" fill="#B3CF38"/>
+  <!-- Paved deck / terrace the pool is set into (stone) -->
+  <polygon points="40,205 120,120 500,120 590,205 500,300 120,300" fill="#DED7C7" stroke="#C4BBA6" stroke-width="2"/>
+  <polygon points="40,205 120,300 500,300 590,205 500,300 120,300" fill="#D3CBB8" opacity="0.5"/>
+
+  <!-- Coping (margelle) around the pool rim -->
+  <polygon points="120,175 200,140 470,140 545,175 465,205 200,205" fill="#F3F1EA" stroke="#B9B09A" stroke-width="1.5"/>
+
+  <!-- Water surface, flush with the deck (inset) -->
+  <polygon class="pool-water" points="200,175 465,175 465,205 200,205" fill="#7CCBE5" stroke="#2586A6" stroke-width="1"/>
+  <!-- Far/side underwater wall glimpse (shows the pool is sunk) -->
+  <polygon points="200,175 465,175 461,185 204,185" fill="#2B8DAD" opacity="0.85"/>
+  <polygon points="200,175 204,185 204,205 200,205" fill="#217897" opacity="0.7"/>
+  <!-- Water shimmer -->
+  <polygon points="230,182 440,182 434,200 226,200" fill="#A3D8E9" opacity="0.6"/>
+  <polygon points="275,188 400,188 396,197 271,197" fill="#BCE2EC" opacity="0.55"/>
+
+  <!-- In-ground handrail (chrome) at the near-right edge -->
+  <g stroke="#C7D2DA" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M455,150 C475,150 475,168 462,176"/>
+    <path d="M470,152 C488,153 487,172 472,180"/>
+  </g>
+  <g stroke="#9BAAB4" stroke-width="1.3" stroke-linecap="round" fill="none">
+    <path d="M455,150 C475,150 475,168 462,176"/>
+    <path d="M470,152 C488,153 487,172 472,180"/>
+  </g>
+</svg>
