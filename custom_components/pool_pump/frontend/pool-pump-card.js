@@ -97,6 +97,7 @@ class PoolPumpCard extends HTMLElement {
       pump_target_entity: config.pump_target_entity ?? this._derive(config.pool_entity, "binary_sensor", "pompe_doit_tourner", "pump_should_be_on"),
       power_entity: config.power_entity ?? this._derive(config.pool_entity, "sensor", "puissance_actuelle", "current_power"),
       energy_today_entity: config.energy_today_entity ?? this._derive(config.pool_entity, "sensor", "energie_aujourd_hui", "energy_today"),
+      multiplier_entity: config.multiplier_entity ?? this._derive(config.pool_entity, "number", "coefficient_de_filtration", "filtration_coefficient"),
       pump_switch: config.pump_switch ?? null,
       electrolyzer_switch: config.electrolyzer_switch ?? null,
       debug: config.debug === true,
@@ -131,13 +132,44 @@ class PoolPumpCard extends HTMLElement {
     return candidates.map((c) => `${domain}.${prefix}_${c}`);
   }
 
+  // Signature of everything the card displays. Used to skip redundant full
+  // re-renders (the #1 "flash" fix): HA pushes a fresh hass object every ~2s,
+  // and rebuilding innerHTML each time reloaded the pool image and reset the
+  // :hover state on buttons. A per-minute bucket keeps the "now" marker moving.
+  _renderSignature() {
+    const h = this._hass;
+    const c = this._config;
+    if (!h || !c) return "";
+    const ids = [
+      c.pool_entity, c.status_entity, c.mode_entity, c.temperature_entity,
+      c.start_entity, c.end_entity, c.duration_entity, c.power_entity,
+      c.energy_today_entity, c.heatwave_entity, c.pump_target_entity,
+      c.multiplier_entity,
+    ];
+    const parts = [Math.floor(Date.now() / 60000)];
+    for (const cand of ids) {
+      const eid = this._pick(cand);
+      const st = eid ? h.states[eid] : null;
+      if (!st) { parts.push("·"); continue; }
+      parts.push(st.state);
+      if (cand === c.status_entity || cand === c.pool_entity) {
+        try { parts.push(JSON.stringify(st.attributes)); } catch (_) { /* ignore */ }
+      }
+    }
+    return parts.join("|");
+  }
+
   set hass(hass) {
     const firstAttach = !this._hass;
     this._hass = hass;
     if (firstAttach) _pplog(this, "First hass attached", { hasConfig: !!this._config });
+    const sig = this._renderSignature();
+    if (!firstAttach && sig === this._lastRenderSig) return;  // nothing we show changed
+    this._lastRenderSig = sig;
     try {
       this._render();
     } catch (e) {
+      this._lastRenderSig = null;  // force a real retry on the next update
       // Don't rethrow on hass update — it would tear down the card and
       // surface as the generic "Configuration error". Instead, show an
       // inline soft error so the user knows where to look.
@@ -234,6 +266,9 @@ class PoolPumpCard extends HTMLElement {
     const start = this._state(this._pick(c.start_entity));
     const end = this._state(this._pick(c.end_entity));
     const duration = this._state(this._pick(c.duration_entity));
+    const multEntityId = this._pick(c.multiplier_entity);
+    const multSt = this._state(multEntityId);
+    const multVal = multSt && !isNaN(parseFloat(multSt.state)) ? parseFloat(multSt.state) : null;
     const temp = this._state(this._pick(c.temperature_entity));
     const heatwave = this._state(this._pick(c.heatwave_entity));
     const pumpTarget = this._state(this._pick(c.pump_target_entity));
@@ -322,6 +357,14 @@ class PoolPumpCard extends HTMLElement {
 
         ${this._renderTimeline(status, startStr, endStr, durStr)}
 
+        ${multVal != null ? `
+        <div class="coeff-row" title="Coefficient de durée de filtration (×). Plus = filtration plus longue.">
+          <ha-icon icon="mdi:speedometer"></ha-icon>
+          <input class="coeff-slider" type="range" min="0.3" max="3" step="0.05" value="${multVal}">
+          <span class="coeff-val">×${multVal.toFixed(2)}</span>
+        </div>
+        ` : ""}
+
         <div class="actions actions-modes">
           ${actionBtn("mdi:autorenew",   "Auto",        null, modeState === "auto",      modeTimes.auto,      "tone-auto")}
           ${actionBtn("mdi:play",        "Marche",      null, modeState === "on",        modeTimes.on,        "tone-on")}
@@ -356,6 +399,23 @@ class PoolPumpCard extends HTMLElement {
       const label = btn.getAttribute("title") || "";
       if (handlers[label]) btn.onclick = handlers[label];
     });
+
+    // Filtration-coefficient slider: live label on drag, apply on release.
+    const coeff = this._root.querySelector(".coeff-slider");
+    if (coeff) {
+      const lbl = this._root.querySelector(".coeff-val");
+      coeff.oninput = (e) => {
+        if (lbl) lbl.textContent = "×" + parseFloat(e.target.value).toFixed(2);
+      };
+      coeff.onchange = (e) => {
+        if (this._hass && multEntityId) {
+          this._hass.callService("number", "set_value", {
+            entity_id: multEntityId,
+            value: parseFloat(e.target.value),
+          });
+        }
+      };
+    }
 
     // Bind tap-to-more-info on each schedule cell that has data-entity
     this._root.querySelectorAll("[data-entity]").forEach((el) => {
@@ -1295,6 +1355,24 @@ const STYLES = `
   }
 
   /* ---------- Compact schedule strip ---------- */
+  .coeff-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 12px 2px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .coeff-row ha-icon { --mdc-icon-size: 18px; color: var(--pp-blue); flex: none; }
+  .coeff-slider { flex: 1; min-width: 0; accent-color: var(--pp-blue); cursor: pointer; }
+  .coeff-val {
+    flex: none;
+    min-width: 42px;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary-text-color);
+  }
   .schedule-strip {
     display: flex;
     align-items: center;
