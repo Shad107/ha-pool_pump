@@ -467,6 +467,25 @@ class PoolPumpCard extends HTMLElement {
         `<span title="Offset appris (${calPoints} calibration${calPoints > 1 ? "s" : ""})">⚖ ${sign}${parseFloat(learnedOffset).toFixed(2)}°C</span>`
       );
     }
+    if (status.attributes.pac_available !== undefined) {
+      const pacReasonFr = {
+        pump_off: "pompe arrêtée", pump_unavailable: "pompe indispo",
+        margin: "marge circulation", temp_low: "eau trop froide",
+        manual: "mode manuel", backwash: "backwash",
+        winterization: "hivernage", pump_only: "pompe seule",
+        maintenance: "maintenance",
+      };
+      const pacReason = status.attributes.pac_block_reason;
+      let pacTxt, pacTitle;
+      if (status.attributes.pac_should_be_on) {
+        pacTxt = "PAC ON"; pacTitle = "Pompe à chaleur en marche";
+      } else if (pacReason && pacReason !== "none") {
+        pacTxt = "PAC OFF"; pacTitle = "PAC coupée : " + (pacReasonFr[pacReason] || pacReason);
+      } else {
+        pacTxt = "PAC ⏸"; pacTitle = "PAC en attente";
+      }
+      extras.push(`<span title="${pacTitle}">♨ ${pacTxt}</span>`);
+    }
     const extrasHtml = extras.length
       ? `<div class="timeline-extras">${extras.join("")}</div>`
       : "";

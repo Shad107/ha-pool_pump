@@ -210,6 +210,7 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
         if d.has_pac:
             attrs["pac_block_reason"] = d.pac_block_reason
             attrs["pac_available"] = d.pac_available
+            attrs["pac_should_be_on"] = d.pac_should_be_on
         if not d.chemistry_enabled:
             attrs.pop("chemistry", None)
             attrs.pop("chemistry_recommendations", None)
