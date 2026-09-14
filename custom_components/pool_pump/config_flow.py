@@ -50,6 +50,7 @@ from .const import (
     CONF_PAC_POWER_SENSOR,
     CONF_PAC_PRE_STOP_DELAY,
     CONF_PAC_SWITCH,
+    CONF_PUMP_FLOW_RATE,
     CONF_FORECAST_SENSOR,
     CONF_HEATWAVE_THRESHOLD,
     CONF_MAX_HOURS,
@@ -611,6 +612,13 @@ def _options_schema(current: dict[str, Any], hass=None) -> vol.Schema:
                 ),
             ): NumberSelector(
                 NumberSelectorConfig(min=0, max=1800, step=10, mode=NumberSelectorMode.BOX)
+            ),
+            vol.Optional(
+                CONF_PUMP_FLOW_RATE,
+                description={"suggested_value": current.get(CONF_PUMP_FLOW_RATE)},
+            ): NumberSelector(
+                NumberSelectorConfig(min=1, max=100, step=0.5, mode=NumberSelectorMode.BOX,
+                                     unit_of_measurement="m³/h")
             ),
             vol.Optional(
                 CONF_PAC_MIN_TEMP,

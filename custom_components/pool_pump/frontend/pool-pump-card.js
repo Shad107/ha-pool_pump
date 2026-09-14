@@ -486,6 +486,13 @@ class PoolPumpCard extends HTMLElement {
       }
       extras.push(`<span title="${pacTitle}">♨ ${pacTxt}</span>`);
     }
+    if (status.attributes.renewals_per_day !== undefined) {
+      const rpd = status.attributes.renewals_per_day;
+      const tt = status.attributes.turnover_time_h;
+      extras.push(
+        `<span title="Renouvellements du volume aujourd'hui${tt != null ? ` — turnover ${parseFloat(tt).toFixed(1)} h` : ""}">🔄 ${parseFloat(rpd).toFixed(1)}/j</span>`
+      );
+    }
     const extrasHtml = extras.length
       ? `<div class="timeline-extras">${extras.join("")}</div>`
       : "";

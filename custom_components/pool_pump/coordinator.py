@@ -84,6 +84,7 @@ from .const import (
     CONF_MIN_HOURS,
     CONF_PIVOT_HOUR,
     CONF_PIVOT_AUTO,
+    CONF_PUMP_FLOW_RATE,
     CONF_BACKWASH_DURATION_MINUTES,
     CONF_HAS_BACKWASH,
     CONF_ELECTROLYZER_POWER_SENSOR,
@@ -235,6 +236,9 @@ class PoolPumpData:
     air_temperature_raw: float | None = None
     forecast_value: float | None = None
     duration_hours: float = 0.0
+    volume_m3: float | None = None
+    turnover_time_h: float | None = None
+    renewals_today: float | None = None
     runs: list[Run] = field(default_factory=list)
     next_start: datetime | None = None
     next_end: datetime | None = None
@@ -1674,6 +1678,14 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
         if data.chemistry_enabled:
             vol = preset["volume_m3"] if preset else None
             data.chemistry, data.chemistry_recommendations = self._build_chemistry_diagnosis(vol)
+
+        # Turnover / renouvellement (informatif) : volume + debit renseigne.
+        data.volume_m3 = preset["volume_m3"] if preset else None
+        flow = self.options.get(CONF_PUMP_FLOW_RATE)
+        if flow and data.volume_m3:
+            flow = float(flow)
+            data.turnover_time_h = data.volume_m3 / flow
+            data.renewals_today = data.duration_hours * flow / data.volume_m3
 
         if preset is not None:
             svg_state = self._svg_state(pump_target, reason)

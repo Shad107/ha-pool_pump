@@ -211,6 +211,9 @@ class StatusSensor(PoolPumpEntity, SensorEntity):
             attrs["pac_block_reason"] = d.pac_block_reason
             attrs["pac_available"] = d.pac_available
             attrs["pac_should_be_on"] = d.pac_should_be_on
+        if d.renewals_today is not None:
+            attrs["turnover_time_h"] = round(d.turnover_time_h, 1)
+            attrs["renewals_per_day"] = round(d.renewals_today, 2)
         if not d.chemistry_enabled:
             attrs.pop("chemistry", None)
             attrs.pop("chemistry_recommendations", None)

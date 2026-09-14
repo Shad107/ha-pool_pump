@@ -5,7 +5,7 @@ from datetime import timedelta
 
 DOMAIN = "pool_pump"
 NAME = "Pool Pump Manager"
-VERSION = "0.17.1"
+VERSION = "0.17.2"
 INTEGRATION_VERSION = VERSION
 
 URL_BASE = "/pool_pump_card_assets"
@@ -16,6 +16,11 @@ JSMODULES = [
 ISSUE_URL = "https://github.com/Shad107/ha-pool_pump/issues"
 
 CONF_PUMP_SWITCH = "pump_switch"
+# Pump real flow rate (m3/h) — optional. Lets the card show the turnover time
+# (volume / flow) and the number of full water renewals per day
+# (filtration hours * flow / volume). Informational only: does not change the
+# computed filtration duration.
+CONF_PUMP_FLOW_RATE = "pump_flow_rate"
 CONF_TEMPERATURE_MODE = "temperature_mode"
 CONF_TEMPERATURE_SENSOR = "temperature_sensor"
 CONF_TAU_HOURS = "tau_hours"
