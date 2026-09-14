@@ -978,6 +978,12 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
 
     def trigger_backwash(self, duration_minutes: float | None = None) -> None:
         """Start a backwash cycle: pump ON + cell OFF for `duration_minutes`."""
+        if not self.options.get(CONF_HAS_BACKWASH, DEFAULT_HAS_BACKWASH):
+            _LOGGER.warning(
+                "Backwash requested but disabled in configuration "
+                "(has_backwash=False); ignoring."
+            )
+            return
         dur = float(
             duration_minutes
             if duration_minutes is not None
@@ -1947,7 +1953,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 )
                 return
         service = "turn_on" if target_on else "turn_off"
-        _LOGGER.warning(
+        _LOGGER.debug(
             "APPLY_SWITCH_CALL: %s %s → %s | was=%s | mode=%s | reason=%s",
             label,
             entity_id,
@@ -1997,7 +2003,7 @@ class PoolPumpCoordinator(DataUpdateCoordinator[PoolPumpData]):
                 )
         else:
             origin = "EXTERNAL — we never touched this entity"
-        _LOGGER.warning(
+        _LOGGER.debug(
             "PUMP_STATE_CHANGE: %s %s→%s | ctx.id=%s user_id=%s parent_id=%s | mode=%s | origin=%s",
             entity_id,
             old_s,
