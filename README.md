@@ -62,6 +62,15 @@ ships it as a modern HA component.
 - **Electrolyzer support** — optional switch with configurable ON/OFF
   margins **and** water-temperature cutoffs (cell off below 15 °C / above
   40 °C by default, per manufacturer practice).
+- **Heat pump (PAC) support** — optional switch driven inside the pump
+  window, cut a configurable lead time **before** the pump stops so water
+  keeps circulating to flush the exchanger, with a min water-temp guard.
+  Exposes `binary_sensor…_heat_pump_should_be_on` and `pac_*` status
+  attributes; no external automation needed.
+- **Active-wintering duration curve** — the optional temperature → duration
+  curve now has 5 °C and 10 °C anchors on top of 15–35 °C, so you can shape a
+  concave / logarithmic-style curve that pulls filtration down in cold water
+  (the old 15 °C floor clamped and couldn't).
 - **Heatwave override** — optional forecast sensor + threshold.
 - **Native entities** — sensors, binary sensors, mode selector, all
   attached to a single device. Dashboards can target them directly.
@@ -135,6 +144,7 @@ Manager → Configure*.
 - `sensor.pool_pump_manager_pool` — pool name; attributes include `shape`, `volume_m3`, `surface_m2`, `depth_m`, `manufacturer`, `svg`
 - `binary_sensor.pool_pump_manager_pump_should_be_on`
 - `binary_sensor.pool_pump_manager_electrolyzer_should_be_on` (if electrolyzer configured)
+- `binary_sensor.pool_pump_manager_heat_pump_should_be_on` (if a PAC switch is configured)
 - `binary_sensor.pool_pump_manager_heatwave_override`
 
 A single service is exposed:

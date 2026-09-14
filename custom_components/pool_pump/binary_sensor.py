@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ELECTROLYZER_SWITCH, DOMAIN
+from .const import CONF_ELECTROLYZER_SWITCH, CONF_PAC_SWITCH, DOMAIN
 from .coordinator import PoolPumpCoordinator
 from .entity import PoolPumpEntity
 
@@ -26,6 +26,8 @@ async def async_setup_entry(
     ]
     if coordinator.options.get(CONF_ELECTROLYZER_SWITCH):
         entities.append(ElectrolyzerTargetSensor(coordinator, entry))
+    if coordinator.options.get(CONF_PAC_SWITCH):
+        entities.append(PacTargetSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -57,6 +59,21 @@ class ElectrolyzerTargetSensor(PoolPumpEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         d = self.coordinator.data
         return bool(d and d.electrolyzer_should_be_on)
+
+
+class PacTargetSensor(PoolPumpEntity, BinarySensorEntity):
+    _attr_translation_key = "pac_target"
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _attr_icon = "mdi:heat-pump"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self._unique_prefix}_pac_target"
+
+    @property
+    def is_on(self) -> bool:
+        d = self.coordinator.data
+        return bool(d and d.pac_should_be_on)
 
 
 class HeatwaveSensor(PoolPumpEntity, BinarySensorEntity):
